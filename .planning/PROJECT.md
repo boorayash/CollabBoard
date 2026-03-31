@@ -38,8 +38,8 @@ CollabBoard aims to be a high-performance demonstration of full-stack real-time 
 
 ## Constraints
 
-- **Tech Stack**: Frontend (React, Redux Toolkit, MUI, Socket.io-client), Backend (Node.js, Express, Prisma, PostgreSQL, Socket.io).
-- **Architecture**: Monolithic backend with a separate React frontend.
+- **Tech Stack**: Frontend (React, Redux Toolkit, MUI, Socket.io-client), Backend (Node.js, Express, Prisma, PostgreSQL, Socket.io). **Only JavaScript is used (No TypeScript).**
+- **Architecture**: Monolithic server with a separate React client.
 - **Security**: JWT-based authentication; boards are private by default.
 
 ## Key Decisions
@@ -48,7 +48,7 @@ CollabBoard aims to be a high-performance demonstration of full-stack real-time 
 |----------|-----------|---------|
 | Real-Time Strategy | Board-level sync via Socket.io (no CRDTs) | — Pending |
 | Database / ORM | PostgreSQL + Prisma for type-safe relational data | — Pending |
-| UI Framework | Material UI for rapid, professional component development | — Pending |
+| UI Framework | Material UI + dnd-kit for drag-and-drop | — Pending |
 | State Management | Redux Toolkit for predictable client-side state sync | — Pending |
 
 ## Evolution
