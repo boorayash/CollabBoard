@@ -1,13 +1,15 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/auth';
+const API_URL = `${import.meta.env.API_URL}/auth`;
 
 export const signup = createAsyncThunk('auth/signup', async (userData, thunkAPI) => {
   try {
     const response = await axios.post(`${API_URL}/signup`, userData);
     if (response.data.token) {
-      localStorage.setItem('user', JSON.stringify(response.data));
+      const userObj = { ...response.data.data.user, teamId: response.data.data.teamId, token: response.data.token };
+      localStorage.setItem('user', JSON.stringify(userObj));
+      response.data.formattedUser = userObj;
     }
     return response.data;
   } catch (error) {
@@ -19,7 +21,9 @@ export const login = createAsyncThunk('auth/login', async (userData, thunkAPI) =
   try {
     const response = await axios.post(`${API_URL}/login`, userData);
     if (response.data.token) {
-      localStorage.setItem('user', JSON.stringify(response.data));
+      const userObj = { ...response.data.data.user, teamId: response.data.data.teamId, token: response.data.token };
+      localStorage.setItem('user', JSON.stringify(userObj));
+      response.data.formattedUser = userObj;
     }
     return response.data;
   } catch (error) {
@@ -58,7 +62,7 @@ export const authSlice = createSlice({
       .addCase(signup.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.user = action.payload;
+        state.user = action.payload.formattedUser;
       })
       .addCase(signup.rejected, (state, action) => {
         state.isLoading = false;
@@ -72,7 +76,7 @@ export const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.user = action.payload;
+        state.user = action.payload.formattedUser;
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;

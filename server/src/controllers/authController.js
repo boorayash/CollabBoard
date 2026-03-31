@@ -18,23 +18,36 @@ exports.signup = async (req, res) => {
     // 2) Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // 3) Create user
-    const newUser = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-      },
+    // 3) Create user and default team in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: { email, password: hashedPassword, name },
+      });
+
+      const team = await tx.team.create({
+        data: { name: 'My Team' },
+      });
+
+      await tx.teamMember.create({
+        data: {
+          userId: user.id,
+          teamId: team.id,
+          role: 'ADMIN',
+        },
+      }); 
+
+      return { user, teamId: team.id };
     });
 
     // 4) Sign token
-    const token = signToken(newUser.id);
+    const token = signToken(result.user.id);
 
     res.status(201).json({
       status: 'success',
       token,
       data: {
-        user: { id: newUser.id, email: newUser.email, name: newUser.name },
+        user: { id: result.user.id, email: result.user.email, name: result.user.name },
+        teamId: result.teamId,
       },
     });
   } catch (err) {
@@ -46,21 +59,24 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1) Check if email and password exist
     if (!email || !password) {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
 
-    // 2) Check if user exists & password is correct
     const user = await prisma.user.findUnique({
       where: { email },
+      include: {
+        teams: {
+          take: 1,
+          select: { teamId: true },
+        },
+      },
     });
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: 'Incorrect email or password' });
     }
 
-    // 3) If everything ok, send token to client
     const token = signToken(user.id);
 
     res.status(200).json({
@@ -68,6 +84,7 @@ exports.login = async (req, res) => {
       token,
       data: {
         user: { id: user.id, email: user.email, name: user.name },
+        teamId: user.teams[0]?.teamId || null,
       },
     });
   } catch (err) {
