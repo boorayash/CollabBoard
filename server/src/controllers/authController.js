@@ -88,6 +88,7 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: 'Error logging in', error: err.message });
+    console.error('[authController.login] Error:', err);
+    res.status(500).json({ message: err.message || 'Error logging in', stack: err.stack });
   }
 };

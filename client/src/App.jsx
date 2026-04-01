@@ -17,7 +17,13 @@ const theme = createTheme({
     },
   },
   typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Inter", sans-serif',
+    h1: { fontFamily: '"Outfit", sans-serif' },
+    h2: { fontFamily: '"Outfit", sans-serif' },
+    h3: { fontFamily: '"Outfit", sans-serif' },
+    h4: { fontFamily: '"Outfit", sans-serif' },
+    h5: { fontFamily: '"Outfit", sans-serif' },
+    h6: { fontFamily: '"Outfit", sans-serif' },
   },
 });
 
@@ -33,19 +39,28 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route
-          path="/board/:id"
-          element={
-            <ProtectedRoute>
-              <Board />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/" element={<Navigate to="/login" />} />
-      </Routes>
+      <div style={{
+        minHeight: '100vh',
+        width: '100vw',
+        background: 'linear-gradient(135deg, #0F172A, #1E1B4B, #0F172A)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden' // prevents body scroll jumping
+      }}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route
+            path="/board/:id"
+            element={
+              <ProtectedRoute>
+                <Board />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/login" />} />
+        </Routes>
+      </div>
     </ThemeProvider>
   );
 }

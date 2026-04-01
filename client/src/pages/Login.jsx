@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Container, Box, Typography, TextField, Button, Alert } from '@mui/material';
 import { login, reset } from '../store/slices/authSlice';
+
+const textFieldSx = {
+  '& .MuiOutlinedInput-root': {
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    '& fieldset': { borderColor: 'var(--glass-border)' },
+    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+    '&.Mui-focused fieldset': { 
+      borderColor: 'var(--color-primary)', 
+      boxShadow: '0 0 10px rgba(124, 58, 237, 0.5)' 
+    }
+  }
+};
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -43,9 +56,26 @@ const Login = () => {
   };
 
   return (
-    <Container maxWidth="xs">
-      <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+    <Container maxWidth="xs" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <Box 
+        component={motion.div} 
+        initial={{ opacity: 0, y: 20 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        transition={{ duration: 0.5 }}
+        sx={{ 
+          p: 4, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center',
+          background: 'var(--glass-bg)',
+          backdropFilter: 'blur(var(--glass-blur))',
+          border: '1px solid var(--glass-border)',
+          borderRadius: 3,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+          width: '100%'
+        }}
+      >
+        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" sx={{ color: '#fff' }}>
           CollabBoard
         </Typography>
         <Typography variant="body1" color="text.secondary" gutterBottom>
@@ -66,6 +96,7 @@ const Login = () => {
             autoFocus
             value={email}
             onChange={onChange}
+            sx={textFieldSx}
           />
           <TextField
             margin="normal"
@@ -78,12 +109,18 @@ const Login = () => {
             autoComplete="current-password"
             value={password}
             onChange={onChange}
+            sx={textFieldSx}
           />
           <Button
             type="submit"
             fullWidth
             variant="contained"
-            sx={{ mt: 3, mb: 2, height: 48, borderRadius: 2, textTransform: 'none', fontSize: '1rem' }}
+            sx={{ 
+              mt: 3, mb: 2, height: 48, borderRadius: 2, textTransform: 'none', fontSize: '1rem',
+              background: 'var(--color-primary)',
+              '&:hover': { background: '#6d28d9' },
+              '&:active': { transform: 'scale(0.98)' }
+            }}
             disabled={isLoading}
           >
             {isLoading ? 'Logging in...' : 'Log In'}
