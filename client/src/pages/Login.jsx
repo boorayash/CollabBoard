@@ -33,14 +33,11 @@ const Login = () => {
   );
 
   useEffect(() => {
-    if (isError) {
-      // Alert will show based on state.message
-    }
-    if (isSuccess || user) {
-      navigate('/board/default'); // Placeholder ID
+    if (isSuccess) {
+      navigate('/board/default');
     }
     dispatch(reset());
-  }, [user, isError, isSuccess, message, navigate, dispatch]);
+  }, [isSuccess, navigate, dispatch]);
 
   const onChange = (e) => {
     setFormData((prevState) => ({

@@ -34,14 +34,11 @@ const Signup = () => {
   );
 
   useEffect(() => {
-    if (isError) {
-      // Alert will show based on state.message
-    }
-    if (isSuccess || user) {
+    if (isSuccess) {
       navigate('/board/default');
     }
     dispatch(reset());
-  }, [user, isError, isSuccess, message, navigate, dispatch]);
+  }, [isSuccess, navigate, dispatch]);
 
   const onChange = (e) => {
     setFormData((prevState) => ({

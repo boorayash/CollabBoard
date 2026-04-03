@@ -28,13 +28,20 @@ model Team {
   updatedAt DateTime @updatedAt
 }
 
+enum MemberStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 model TeamMember {
-  id        String   @id @default(uuid())
-  role      String   // "ADMIN" | "MEMBER"
+  id        String       @id @default(uuid())
+  role      String       // "ADMIN" | "MEMBER"
+  status    MemberStatus @default(ACCEPTED)
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User         @relation(fields: [userId], references: [id])
   teamId    String
-  team      Team     @relation(fields: [teamId], references: [id])
+  team      Team         @relation(fields: [teamId], references: [id])
 
   @@unique([userId, teamId])
 }

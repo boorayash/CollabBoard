@@ -92,3 +92,52 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: err.message || 'Error logging in', stack: err.stack });
   }
 };
+
+exports.searchUsers = async (req, res) => {
+  try {
+    const { query, exact } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    const trimmedQuery = query.trim();
+    const isExact = exact === 'true' || exact === true;
+
+    const searchCondition = isExact 
+      ? {
+          OR: [
+            { name: { equals: trimmedQuery, mode: 'insensitive' } },
+            { email: { equals: trimmedQuery, mode: 'insensitive' } }
+          ]
+        }
+      : {
+          OR: [
+            { name: { contains: trimmedQuery, mode: 'insensitive' } },
+            { email: { contains: trimmedQuery, mode: 'insensitive' } }
+          ]
+        };
+
+    const users = await prisma.user.findMany({
+      where: {
+        ...searchCondition,
+        NOT: {
+          id: req.user.id // Exclude the current user from search
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true
+      },
+      take: 10 // Limit results
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: { users }
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error searching users', error: err.message });
+  }
+};
