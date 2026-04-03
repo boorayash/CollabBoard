@@ -38,11 +38,13 @@ exports.createTeam = async (req, res) => {
       }
 
       return team;
+
     });
 
     res.status(201).json({
       status: 'success',
       data: { team: result },
+
     });
   } catch (err) {
     res.status(500).json({ message: 'Error creating team', error: err.message });
@@ -57,6 +59,7 @@ exports.getTeams = async (req, res) => {
           some: {
             userId: req.user.id,
             status: 'ACCEPTED',
+
           },
         },
       },
@@ -68,6 +71,7 @@ exports.getTeams = async (req, res) => {
             }
           }
         },
+
       },
     });
 

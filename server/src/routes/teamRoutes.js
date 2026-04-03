@@ -16,4 +16,5 @@ router.post('/:id/invite', teamController.inviteMember);
 router.delete('/:id/leave', teamController.leaveTeam);
 router.post('/:id/respond', teamController.respondToInvitation);
 
+
 module.exports = router;
