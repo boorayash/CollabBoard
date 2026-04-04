@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { connectSocket, disconnectSocket } from './socket/socketClient';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -36,6 +38,17 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
+  const { user } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (user?.token) {
+      connectSocket(user.token);
+    }
+    return () => {
+      disconnectSocket();
+    };
+  }, [user]);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />

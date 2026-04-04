@@ -13,6 +13,8 @@ import Sidebar from '../components/Sidebar';
 import TeamMembersModal from '../components/TeamMembersModal';
 import { Plus, UserPlus, Users, Settings, LogOut } from 'lucide-react';
 import { getInitialRank } from '../utils/ranks';
+import { joinBoard, leaveBoard } from '../socket/socketClient';
+import { setupBoardListeners, cleanupBoardListeners } from '../socket/boardEvents';
 
 const Board = () => {
   const { id } = useParams();
@@ -39,6 +41,20 @@ const Board = () => {
       dispatch(fetchBoards(teamId));
     }
   }, [dispatch, teamId]);
+
+  // Socket: join/leave board room
+  useEffect(() => {
+    if (board?.id) {
+      joinBoard(board.id);
+      setupBoardListeners();
+    }
+    return () => {
+      if (board?.id) {
+        leaveBoard(board.id);
+      }
+      cleanupBoardListeners();
+    };
+  }, [board?.id]);
 
   const onCreateBoard = () => {
     if (newBoardName.trim() && teamId) {
