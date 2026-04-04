@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { addPendingAction } from '../../socket/boardEvents';
 
 const API_URL = import.meta.env.API_URL;
 
@@ -35,6 +36,8 @@ export const createList = createAsyncThunk('board/createList', async (listData, 
     const response = await axios.post(`${API_URL}/lists`, listData, {
       headers: getAuthHeader(),
     });
+    // Refinement #2: pendingAction always AFTER API response
+    addPendingAction(`list:created:${response.data.data.list.id}`);
     return response.data.data.list;
   } catch (error) {
     return thunkAPI.rejectWithValue(error.response?.data?.message || 'Error creating list');
@@ -46,6 +49,8 @@ export const createCard = createAsyncThunk('board/createCard', async (cardData, 
     const response = await axios.post(`${API_URL}/cards`, cardData, {
       headers: getAuthHeader(),
     });
+    // Refinement #2: pendingAction always AFTER API response
+    addPendingAction(`card:created:${response.data.data.card.id}`);
     return response.data.data.card;
   } catch (error) {
     return thunkAPI.rejectWithValue(error.response?.data?.message || 'Error creating card');
@@ -57,6 +62,8 @@ export const updateCardPosition = createAsyncThunk('board/updateCardPosition', a
     const response = await axios.patch(`${API_URL}/cards/${cardId}`, data, {
       headers: getAuthHeader(),
     });
+    // Refinement #2: pendingAction always AFTER API response
+    addPendingAction(`card:updated:${cardId}`);
     return response.data.data.card;
   } catch (error) {
     return thunkAPI.rejectWithValue(error.response?.data?.message || 'Error updating card position');
@@ -106,7 +113,70 @@ export const boardSlice = createSlice({
       const insertionIndex = overIndex >= 0 ? overIndex : overList.cards.length;
       
       overList.cards.splice(insertionIndex, 0, movedCard);
-    }
+    },
+
+    // === Socket-driven reducers (for other users' updates) ===
+
+    socketCardCreated: (state, action) => {
+      const { card, listId, boardId } = action.payload;
+      const board = state.boards.find(b => b.id === boardId);
+      if (board) {
+        const list = board.lists?.find(l => l.id === listId);
+        if (list) {
+          if (!list.cards) list.cards = [];
+          // Avoid duplicates
+          if (!list.cards.find(c => c.id === card.id)) {
+            list.cards.push(card);
+            list.cards.sort((a, b) => a.rank.localeCompare(b.rank));
+          }
+        }
+      }
+    },
+
+    socketCardUpdated: (state, action) => {
+      const { card, boardId } = action.payload;
+      const board = state.boards.find(b => b.id === boardId);
+      if (!board) return;
+
+      // Remove card from its current list (handles moves)
+      board.lists?.forEach(list => {
+        if (list.cards) {
+          list.cards = list.cards.filter(c => c.id !== card.id);
+        }
+      });
+
+      // Add card to its (possibly new) list
+      const targetList = board.lists?.find(l => l.id === card.listId);
+      if (targetList) {
+        if (!targetList.cards) targetList.cards = [];
+        targetList.cards.push(card);
+        targetList.cards.sort((a, b) => a.rank.localeCompare(b.rank));
+      }
+    },
+
+    socketCardDeleted: (state, action) => {
+      const { cardId, listId, boardId } = action.payload;
+      const board = state.boards.find(b => b.id === boardId);
+      if (board) {
+        const list = board.lists?.find(l => l.id === listId);
+        if (list?.cards) {
+          list.cards = list.cards.filter(c => c.id !== cardId);
+        }
+      }
+    },
+
+    socketListCreated: (state, action) => {
+      const { list, boardId } = action.payload;
+      const board = state.boards.find(b => b.id === boardId);
+      if (board) {
+        if (!board.lists) board.lists = [];
+        // Avoid duplicates
+        if (!board.lists.find(l => l.id === list.id)) {
+          board.lists.push(list);
+          board.lists.sort((a, b) => a.rank.localeCompare(b.rank));
+        }
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -165,5 +235,8 @@ export const boardSlice = createSlice({
   },
 });
 
-export const { resetBoardState, setCurrentBoard, moveCardOptimistic } = boardSlice.actions;
+export const { 
+  resetBoardState, setCurrentBoard, moveCardOptimistic,
+  socketCardCreated, socketCardUpdated, socketCardDeleted, socketListCreated
+} = boardSlice.actions;
 export default boardSlice.reducer;

@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const { getIO } = require('../socket/index');
 
 exports.createList = async (req, res) => {
   try {
@@ -37,10 +38,18 @@ exports.createList = async (req, res) => {
       status: 'success',
       data: { list },
     });
+
+    // 3) Broadcast to board room (AFTER response)
+    const io = getIO();
+    io.to(`board:${boardId}`).emit('list:created', {
+      list: { ...list, cards: [] },
+      boardId,
+    });
   } catch (err) {
     res.status(500).json({ message: 'Error creating list', error: err.message });
   }
 };
+
 
 exports.getLists = async (req, res) => {
   try {
