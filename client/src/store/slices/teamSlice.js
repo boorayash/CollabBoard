@@ -35,7 +35,7 @@ export const searchUsers = createAsyncThunk('team/searchUsers', async ({ query, 
 
 export const fetchTeamMembers = createAsyncThunk('team/fetchTeamMembers', async (teamId, thunkAPI) => {
   try {
-    const response = await axios.get(`${API_URL}/teams/members/${teamId}`, {
+    const response = await axios.get(`${API_URL}/teams/${teamId}/members`, {
       headers: getAuthHeader(),
     });
     return response.data.data.members;
@@ -96,6 +96,28 @@ export const respondToInvite = createAsyncThunk('team/respondToInvite', async ({
     return { teamId, action, teamMember: response.data.data?.teamMember };
   } catch (error) {
     return thunkAPI.rejectWithValue(error.response?.data?.message || 'Error responding to invitation');
+  }
+});
+
+export const removeMember = createAsyncThunk('team/removeMember', async ({ teamId, userId }, thunkAPI) => {
+  try {
+    await axios.delete(`${API_URL}/teams/${teamId}/members/${userId}`, {
+      headers: getAuthHeader(),
+    });
+    return userId;
+  } catch (error) {
+    return thunkAPI.rejectWithValue(error.response?.data?.message || 'Error removing member');
+  }
+});
+
+export const updateMemberRole = createAsyncThunk('team/updateRole', async ({ teamId, userId, role }, thunkAPI) => {
+  try {
+    const response = await axios.patch(`${API_URL}/teams/${teamId}/members/${userId}`, { role }, {
+      headers: getAuthHeader(),
+    });
+    return response.data.data.teamMember;
+  } catch (error) {
+    return thunkAPI.rejectWithValue(error.response?.data?.message || 'Error updating role');
   }
 });
 
@@ -212,6 +234,19 @@ export const teamSlice = createSlice({
         state.myTeams = state.myTeams.filter(team => team.id !== teamId);
         if (state.currentTeam?.id === teamId) {
           state.currentTeam = null;
+        }
+      })
+      .addCase(removeMember.fulfilled, (state, action) => {
+        state.teamMembers = state.teamMembers.filter(m => m.userId !== action.payload);
+      })
+      .addCase(updateMemberRole.fulfilled, (state, action) => {
+        const index = state.teamMembers.findIndex(m => m.userId === action.payload.userId);
+        if (index !== -1) {
+          // Merge with existing member to keep nested user data if needed
+          state.teamMembers[index] = { 
+            ...state.teamMembers[index], 
+            ...action.payload 
+          };
         }
       });
   },

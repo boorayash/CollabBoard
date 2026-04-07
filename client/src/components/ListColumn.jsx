@@ -1,14 +1,17 @@
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
-import { Box, Typography, Paper, Button } from '@mui/material';
-import { useDispatch } from 'react-redux';
-import { Plus } from 'lucide-react';
-import { createCard } from '../store/slices/boardSlice';
+import { Box, Typography, Paper, Button, IconButton, Stack, Tooltip } from '@mui/material';
+import { useDispatch, useSelector } from 'react-redux';
+import { Plus, Trash2 } from 'lucide-react';
+import { createCard, deleteList } from '../store/slices/boardSlice';
 import TaskCard from './TaskCard';
 import { getInitialRank } from '../utils/ranks';
 
 const ListColumn = ({ list }) => {
   const dispatch = useDispatch();
+  const { role } = useSelector((state) => state.board);
+  const isAdmin = role === 'ADMIN';
+
   const { setNodeRef, isOver } = useDroppable({ id: list.id });
 
   const onAddTask = () => {
@@ -21,6 +24,13 @@ const ListColumn = ({ list }) => {
       }));
     }
   };
+
+  const onDeleteList = () => {
+    if (window.confirm(`Are you sure you want to delete the list "${list.name}"? This will also delete all tasks in it.`)) {
+      dispatch(deleteList(list.id));
+    }
+  };
+
   return (
     <Paper 
       sx={{ 
@@ -34,7 +44,21 @@ const ListColumn = ({ list }) => {
         transition: 'all 0.2s ease'
       }}
     >
-      <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 700, px: 1, letterSpacing: '0.2px' }}>{list.name}</Typography>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2, px: 1 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, letterSpacing: '0.2px' }}>{list.name}</Typography>
+        {isAdmin && (
+          <Tooltip title="Delete List">
+            <IconButton 
+              size="small" 
+              onClick={onDeleteList}
+              sx={{ color: 'rgba(255,255,255,0.3)', '&:hover': { color: '#ff4444', background: 'rgba(255,68,68,0.1)' } }}
+            >
+              <Trash2 size={16} />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Stack>
+
       <Box ref={setNodeRef} sx={{ flexGrow: 1, overflowY: 'auto', p: 1, minHeight: 50 }}>
         <SortableContext items={list.cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {list.cards.length === 0 ? (

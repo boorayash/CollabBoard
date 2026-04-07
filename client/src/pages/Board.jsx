@@ -6,7 +6,7 @@ import {
   IconButton, Tooltip, Menu, MenuItem, ListItemIcon, 
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions
 } from '@mui/material';
-import { fetchBoards, createList, createBoard } from '../store/slices/boardSlice';
+import { fetchBoards, createList, createBoard, resetBoardDeleted } from '../store/slices/boardSlice';
 import { leaveTeam, setCurrentTeam } from '../store/slices/teamSlice';
 import KanbanBoard from '../components/KanbanBoard';
 import Sidebar from '../components/Sidebar';
@@ -31,16 +31,26 @@ const Board = () => {
 
   const { user } = useSelector((state) => state.auth);
   const { currentTeam } = useSelector((state) => state.team);
-  const { boards, isLoading } = useSelector((state) => state.board);
+  const { boards, role, isLoading, boardDeleted } = useSelector((state) => state.board);
   
   const board = boards.find((b) => b.id === id) || boards[0];
   const teamId = currentTeam?.id || board?.teamId || user?.teamId;
+  const isAdmin = role === 'ADMIN';
 
   useEffect(() => {
     if (teamId) {
       dispatch(fetchBoards(teamId));
     }
   }, [dispatch, teamId]);
+
+  // Redirection if board was deleted
+  useEffect(() => {
+    if (boardDeleted === id) {
+      alert('This board has been deleted by an admin.');
+      dispatch(resetBoardDeleted());
+      navigate('/board/default');
+    }
+  }, [boardDeleted, id, navigate, dispatch]);
 
   // Socket: join/leave board room
   useEffect(() => {
@@ -127,21 +137,24 @@ const Board = () => {
             >
               View Members
             </Button>
-            <Button 
-              variant="contained" 
-              startIcon={<UserPlus size={18} />}
-              onClick={() => openMembersModal(1)}
-              sx={{ 
-                bgcolor: 'rgba(124, 58, 237, 0.1)', 
-                color: 'var(--color-primary)', 
-                textTransform: 'none', 
-                fontWeight: 600,
-                border: '1px solid rgba(124, 58, 237, 0.2)',
-                '&:hover': { bgcolor: 'rgba(124, 58, 237, 0.2)', border: '1px solid var(--color-primary)' }
-              }}
-            >
-              Add User
-            </Button>
+            
+            {isAdmin && (
+              <Button 
+                variant="contained" 
+                startIcon={<UserPlus size={18} />}
+                onClick={() => openMembersModal(1)}
+                sx={{ 
+                  bgcolor: 'rgba(124, 58, 237, 0.1)', 
+                  color: 'var(--color-primary)', 
+                  textTransform: 'none', 
+                  fontWeight: 600,
+                  border: '1px solid rgba(124, 58, 237, 0.2)',
+                  '&:hover': { bgcolor: 'rgba(124, 58, 237, 0.2)', border: '1px solid var(--color-primary)' }
+                }}
+              >
+                Add User
+              </Button>
+            )}
             
             <IconButton 
               onClick={handleSettingsClick}
@@ -165,6 +178,7 @@ const Board = () => {
                 }
               }}
             >
+              {/* Future: Rename/Delete Board for Admins */}
               <MenuItem onClick={() => setLeaveDialogOpen(true)} sx={{ color: '#ff4444' }}>
                 <ListItemIcon sx={{ color: '#ff4444' }}>
                   <LogOut size={18} />
@@ -188,50 +202,54 @@ const Board = () => {
               {(!board.lists || board.lists.length === 0) ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', width: '100%', gap: 3 }}>
                   <Typography variant="h5" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                    Create your first list
+                    {isAdmin ? 'Create your first list' : 'No lists yet'}
                   </Typography>
-                  <Button 
-                    onClick={onAddList} 
-                    variant="contained" 
-                    startIcon={<Plus size={20} />}
-                    sx={{ 
-                      bgcolor: 'var(--color-primary)', height: 48, px: 4, borderRadius: 2,
-                      textTransform: 'none', fontSize: '1rem',
-                      '&:hover': { bgcolor: '#6d28d9' },
-                      '&:active': { transform: 'scale(0.98)' }
-                    }}
-                  >
-                  Add List
-                  </Button>
+                  {isAdmin && (
+                    <Button 
+                      onClick={onAddList} 
+                      variant="contained" 
+                      startIcon={<Plus size={20} />}
+                      sx={{ 
+                        bgcolor: 'var(--color-primary)', height: 48, px: 4, borderRadius: 2,
+                        textTransform: 'none', fontSize: '1rem',
+                        '&:hover': { bgcolor: '#6d28d9' },
+                        '&:active': { transform: 'scale(0.98)' }
+                      }}
+                    >
+                      Add List
+                    </Button>
+                  )}
                 </Box>
               ) : (
                 <>
                   <KanbanBoard initialData={board.lists} />
-                  <Button 
-                    onClick={onAddList} 
-                    variant="outlined" 
-                    startIcon={<Plus size={20} />}
-                    sx={{ 
-                      minWidth: 280, 
-                      ml: 2, 
-                      height: 56, 
-                      borderRadius: 2,
-                      border: '1px dashed var(--glass-border)', 
-                      color: 'rgba(255,255,255,0.7)',
-                      background: 'var(--glass-bg)',
-                      backdropFilter: 'blur(var(--glass-blur))',
-                      textTransform: 'none',
-                      fontSize: '1rem',
-                      flexShrink: 0,
-                      '&:hover': {
-                        background: 'rgba(255,255,255,0.1)',
-                        borderColor: 'var(--color-secondary)'
-                      },
-                      '&:active': { transform: 'scale(0.98)' }
-                    }}
-                  >
-                  Add List
-                  </Button>
+                  {isAdmin && (
+                    <Button 
+                      onClick={onAddList} 
+                      variant="outlined" 
+                      startIcon={<Plus size={20} />}
+                      sx={{ 
+                        minWidth: 280, 
+                        ml: 2, 
+                        height: 56, 
+                        borderRadius: 2,
+                        border: '1px dashed var(--glass-border)', 
+                        color: 'rgba(255,255,255,0.7)',
+                        background: 'var(--glass-bg)',
+                        backdropFilter: 'blur(var(--glass-blur))',
+                        textTransform: 'none',
+                        fontSize: '1rem',
+                        flexShrink: 0,
+                        '&:hover': {
+                          background: 'rgba(255,255,255,0.1)',
+                          borderColor: 'var(--color-secondary)'
+                        },
+                        '&:active': { transform: 'scale(0.98)' }
+                      }}
+                    >
+                    Add List
+                    </Button>
+                  )}
                 </>
               )}
             </>
