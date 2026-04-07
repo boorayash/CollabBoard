@@ -47,6 +47,7 @@ exports.createTeam = async (req, res) => {
 
     });
   } catch (err) {
+    console.error('[teamController.createTeam] Error:', err);
     res.status(500).json({ message: 'Error creating team', error: err.message });
   }
 };
@@ -81,30 +82,17 @@ exports.getTeams = async (req, res) => {
       data: { teams },
     });
   } catch (err) {
+    console.error('[teamController.getTeams] Error:', err);
     res.status(500).json({ message: 'Error fetching teams', error: err.message });
   }
 };
 
 exports.inviteMember = async (req, res) => {
   try {
-    const { id: teamId } = req.params;
+    const { teamId } = req.params;
     const { targetUserId } = req.body;
 
-    // Verify user is ADMIN of the team
-    const adminMember = await prisma.teamMember.findUnique({
-      where: {
-        userId_teamId: {
-          userId: req.user.id,
-          teamId,
-        },
-      },
-    });
-
-    if (!adminMember || adminMember.role !== 'ADMIN') {
-      return res.status(403).json({ message: 'Only team admins can invite members' });
-    }
-
-    // Check if user is already a member or pending
+    // 1) Logic-level check for duplicate (D-10)
     const existingMember = await prisma.teamMember.findUnique({
       where: {
         userId_teamId: {
@@ -116,16 +104,16 @@ exports.inviteMember = async (req, res) => {
 
     if (existingMember) {
       if (existingMember.status === 'PENDING') {
-         return res.status(400).json({ message: 'Invitation already sent' });
+         return res.status(400).json({ message: 'Invitation already sent and is pending' });
       }
-      return res.status(400).json({ message: 'User is already a member' });
+      return res.status(400).json({ message: 'User is already a member of this team' });
     }
 
     const teamMember = await prisma.teamMember.create({
       data: {
         userId: targetUserId,
         teamId,
-        role: 'MEMBER',
+        role: 'MEMBER', // Default for invited users (D-03)
         status: 'PENDING',
       },
       include: {
@@ -141,7 +129,7 @@ exports.inviteMember = async (req, res) => {
 
 exports.respondToInvitation = async (req, res) => {
   try {
-    const { id: teamId } = req.params;
+    const { teamId } = req.params;
     const { action } = req.body; // 'ACCEPT' or 'REJECT'
 
     if (action === 'ACCEPT') {
@@ -197,7 +185,7 @@ exports.getInvitations = async (req, res) => {
 
 exports.getTeamMembers = async (req, res) => {
   try {
-    const { id: teamId } = req.query.id ? req.query : req.params;
+    const { teamId } = req.params;
 
     const members = await prisma.teamMember.findMany({
       where: { teamId, status: 'ACCEPTED' },
@@ -210,16 +198,88 @@ exports.getTeamMembers = async (req, res) => {
   }
 };
 
+exports.updateMemberRole = async (req, res) => {
+  try {
+    const { teamId, userId } = req.params;
+    const { role } = req.body;
+
+    if (!['ADMIN', 'MEMBER'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role. Must be ADMIN or MEMBER' });
+    }
+
+    // Protection: If demoting self, ensure another admin exists (D-09)
+    if (userId === req.user.id && role === 'MEMBER') {
+       const adminCount = await prisma.teamMember.count({
+         where: { teamId, role: 'ADMIN', status: 'ACCEPTED' }
+       });
+       if (adminCount <= 1) {
+         return res.status(403).json({ message: 'Cannot demote the last admin. Promote another member first.' });
+       }
+    }
+
+    const teamMember = await prisma.teamMember.update({
+      where: {
+        userId_teamId: { userId, teamId }
+      },
+      data: { role }
+    });
+
+    res.status(200).json({ status: 'success', data: { teamMember } });
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating role', error: err.message });
+  }
+};
+
+exports.removeMember = async (req, res) => {
+  try {
+    const { teamId, userId } = req.params;
+
+    // Protection: Cannot remove last admin (D-09)
+    const targetMember = await prisma.teamMember.findUnique({
+      where: { userId_teamId: { userId, teamId } }
+    });
+
+    if (targetMember && targetMember.role === 'ADMIN') {
+      const adminCount = await prisma.teamMember.count({
+        where: { teamId, role: 'ADMIN', status: 'ACCEPTED' }
+      });
+      if (adminCount <= 1) {
+        return res.status(403).json({ message: 'Cannot remove the last admin. Promote another member first.' });
+      }
+    }
+
+    await prisma.teamMember.delete({
+      where: { userId_teamId: { userId, teamId } }
+    });
+
+    res.status(204).json({ status: 'success', data: null });
+  } catch (err) {
+    res.status(500).json({ message: 'Error removing member', error: err.message });
+  }
+};
+
 exports.leaveTeam = async (req, res) => {
   try {
-    const { id: teamId } = req.params;
+    const { teamId } = req.params;
+    const userId = req.user.id;
+
+    // Protection: Cannot leave if last admin (D-09)
+    const membership = await prisma.teamMember.findUnique({
+      where: { userId_teamId: { userId, teamId } }
+    });
+
+    if (membership && membership.role === 'ADMIN') {
+      const adminCount = await prisma.teamMember.count({
+        where: { teamId, role: 'ADMIN', status: 'ACCEPTED' }
+      });
+      if (adminCount <= 1) {
+        return res.status(403).json({ message: 'You are the last admin. You must promote someone else or delete the team before leaving.' });
+      }
+    }
 
     await prisma.teamMember.delete({
       where: {
-        userId_teamId: {
-          userId: req.user.id,
-          teamId,
-        },
+        userId_teamId: { userId, teamId },
       },
     });
 
