@@ -23,6 +23,7 @@ const initSocket = (server) => {
       socket.userId = decoded.id;
       next();
     } catch (err) {
+      socket.disconnect(true); // Automatically disconnect on invalid token
       return next(new Error('Authentication error: Invalid token'));
     }
   });

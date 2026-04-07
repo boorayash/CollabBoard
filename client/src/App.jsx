@@ -43,6 +43,8 @@ function App() {
   useEffect(() => {
     if (user?.token) {
       connectSocket(user.token);
+    } else {
+      disconnectSocket();
     }
     return () => {
       disconnectSocket();
