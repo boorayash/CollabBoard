@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const { getIO } = require('../socket/index');
 
 exports.createBoard = async (req, res) => {
   try {
@@ -62,9 +63,83 @@ exports.getBoards = async (req, res) => {
     res.status(200).json({
       status: 'success',
       results: boards.length,
-      data: { boards },
+      data: { 
+        boards,
+        role: req.memberRole // Populated by authorize middleware
+      },
     });
   } catch (err) {
     res.status(500).json({ message: 'Error fetching boards', error: err.message });
+  }
+};
+
+exports.updateBoard = async (req, res) => {
+  try {
+    const { boardId } = req.params;
+    const { name } = req.body;
+
+    const board = await prisma.board.update({
+      where: { id: boardId },
+      data: { name },
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: { board },
+    });
+
+    // Broadcast board:updated
+    const io = getIO();
+    const socketId = req.headers['x-socket-id'];
+    const room = `board:${boardId}`;
+    const payload = { boardId, name, teamId: board.teamId };
+
+    if (socketId) {
+      io.to(room).except(socketId).emit('board:updated', payload);
+    } else {
+      io.to(room).emit('board:updated', payload);
+    }
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating board', error: err.message });
+  }
+};
+
+exports.deleteBoard = async (req, res) => {
+  try {
+    const { boardId } = req.params;
+
+    // IMPORTANT: Fetch board context BEFORE deletion
+    const boardToDelete = await prisma.board.findUnique({
+      where: { id: boardId },
+    });
+
+    if (!boardToDelete) {
+      return res.status(404).json({ message: 'Board not found' });
+    }
+
+    const { teamId } = boardToDelete;
+
+    await prisma.board.delete({
+      where: { id: boardId },
+    });
+
+    res.status(204).json({
+      status: 'success',
+      data: null,
+    });
+
+    // Broadcast board:deleted WITH context
+    const io = getIO();
+    const socketId = req.headers['x-socket-id'];
+    const room = `board:${boardId}`;
+    const payload = { boardId, teamId };
+
+    if (socketId) {
+      io.to(room).except(socketId).emit('board:deleted', payload);
+    } else {
+      io.to(room).emit('board:deleted', payload);
+    }
+  } catch (err) {
+    res.status(500).json({ message: 'Error deleting board', error: err.message });
   }
 };

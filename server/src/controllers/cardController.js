@@ -45,13 +45,16 @@ exports.createCard = async (req, res) => {
       data: { card },
     });
 
-    // 3) Broadcast to board room (AFTER response)
+    // 3) Broadcast to board room (using x-socket-id to avoid self-echo)
     const io = getIO();
-    io.to(`board:${list.board.id}`).emit('card:created', {
-      card,
-      listId,
-      boardId: list.board.id,
-    });
+    const socketId = req.headers['x-socket-id'];
+    const room = `board:${list.board.id}`;
+
+    if (socketId) {
+      io.to(room).except(socketId).emit('card:created', { card, listId, boardId: list.board.id });
+    } else {
+      io.to(room).emit('card:created', { card, listId, boardId: list.board.id });
+    }
   } catch (err) {
     res.status(500).json({ message: 'Error creating card', error: err.message });
   }
@@ -59,11 +62,11 @@ exports.createCard = async (req, res) => {
 
 exports.updateCard = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { cardId } = req.params;
     const { title, description, priority, listId, rank } = req.body;
 
     const card = await prisma.card.update({
-      where: { id },
+      where: { id: cardId },
       data: {
         title,
         description,
@@ -84,10 +87,14 @@ exports.updateCard = async (req, res) => {
       include: { board: true },
     });
     const io = getIO();
-    io.to(`board:${updatedList.board.id}`).emit('card:updated', {
-      card,
-      boardId: updatedList.board.id,
-    });
+    const socketId = req.headers['x-socket-id'];
+    const room = `board:${updatedList.board.id}`;
+
+    if (socketId) {
+      io.to(room).except(socketId).emit('card:updated', { card, boardId: updatedList.board.id });
+    } else {
+      io.to(room).emit('card:updated', { card, boardId: updatedList.board.id });
+    }
   } catch (err) {
     res.status(500).json({ message: 'Error updating card', error: err.message });
   }
@@ -95,16 +102,16 @@ exports.updateCard = async (req, res) => {
 
 exports.deleteCard = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { cardId } = req.params;
 
     // Look up boardId BEFORE deleting
     const cardToDelete = await prisma.card.findUnique({
-      where: { id },
+      where: { id: cardId },
       include: { list: { include: { board: true } } },
     });
 
     await prisma.card.delete({
-      where: { id },
+      where: { id: cardId },
     });
 
     res.status(204).json({
@@ -115,11 +122,20 @@ exports.deleteCard = async (req, res) => {
     // Broadcast card:deleted (AFTER response)
     if (cardToDelete) {
       const io = getIO();
-      io.to(`board:${cardToDelete.list.board.id}`).emit('card:deleted', {
-        cardId: id,
+      const socketId = req.headers['x-socket-id'];
+      const room = `board:${cardToDelete.list.board.id}`;
+      
+      const payload = {
+        cardId,
         listId: cardToDelete.listId,
         boardId: cardToDelete.list.board.id,
-      });
+      };
+
+      if (socketId) {
+        io.to(room).except(socketId).emit('card:deleted', payload);
+      } else {
+        io.to(room).emit('card:deleted', payload);
+      }
     }
   } catch (err) {
     res.status(500).json({ message: 'Error deleting card', error: err.message });

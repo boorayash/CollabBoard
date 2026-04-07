@@ -74,6 +74,10 @@ const KanbanBoard = ({ initialData }) => {
     }
   };
 
+  const handleDragStart = (event) => {
+    // Optionally track active drag state
+  };
+
   const handleDragEnd = (event) => {
     const { active, over } = event;
     const overId = over?.id;
@@ -83,23 +87,60 @@ const KanbanBoard = ({ initialData }) => {
     const activeContainer = findContainer(active.id);
     const overContainer = findContainer(overId);
 
-    if (!activeContainer || !overContainer || activeContainer !== overContainer) return;
+    if (!activeContainer || !overContainer) return;
 
-    const items = lists.find((l) => l.id === activeContainer).cards;
+    const list = lists.find((l) => l.id === activeContainer);
+    const items = list.cards;
     const activeIndex = items.findIndex((item) => item.id === active.id);
-    const overIndex = items.findIndex((item) => item.id === overId);
+    let overIndex = items.findIndex((item) => item.id === overId);
 
-    if (activeIndex !== overIndex) {
-      setLists((prev) => {
-        const list = prev.find((l) => l.id === activeContainer);
-        const newCards = arrayMove(list.cards, activeIndex, overIndex);
-        return prev.map((l) => (l.id === activeContainer ? { ...l, cards: newCards } : l));
-      });
+    // If dragging to an empty list, overId is the list ID
+    if (overIndex === -1 && overId === overContainer) {
+      overIndex = items.length; // Place at the end
+    }
 
-      // Dispatch to backend (Fractional Index logic simplified)
-      const list = lists.find(l => l.id === activeContainer);
-      const prevCard = list.cards[overIndex - 1];
-      const nextCard = list.cards[overIndex + 1];
+    // Determine if it was an intra-list reorder that actually changed positions
+    // OR if it was already moved to a new list by handleDragOver
+    // Note: handleDragOver modifies local state when moving across lists, 
+    // so activeContainer === overContainer at this stage for cross-list moves too.
+    // However, we MUST dispatch the update to the backend. We can ALWAYS dispatch
+    // if a drag event completed successfully since it implies intentional displacement.
+
+    if (activeIndex !== overIndex || overIndex === -1) {
+      let finalCards = items;
+      
+      // If it's a re-order in the same physical local state array
+      if (activeIndex !== overIndex && overId !== overContainer) {
+         setLists((prev) => {
+           const prevList = prev.find((l) => l.id === activeContainer);
+           finalCards = arrayMove(prevList.cards, activeIndex, overIndex);
+           return prev.map((l) => (l.id === activeContainer ? { ...l, cards: finalCards } : l));
+         });
+      }
+
+      // Calculate rank based on the PREDICTED final array state
+      // (because setLists is async, we use finalCards or items locally)
+      const targetCards = finalCards || items;
+      
+      // We must calculate the correct target index. 
+      // If arrayMove was called, the card is now at `overIndex`.
+      // If arrayMove wasn't called (it was already moved by dragOver), the card is at `activeIndex`.
+      const targetIndex = (activeIndex !== overIndex && overId !== overContainer) ? overIndex : activeIndex;
+
+      const prevCard = targetCards[targetIndex - 1];
+      const nextCard = targetCards[targetIndex + 1];
+      const newRank = generateNewRank(prevCard?.rank, nextCard?.rank);
+
+      dispatch(updateCardPosition({ 
+        cardId: active.id, 
+        data: { listId: overContainer, rank: newRank } 
+      }));
+    } else {
+      // It was an across-list drag that happened to land at activeIndex === overIndex!
+      // DragOver moved it, so it's ALREADY in the new list in local state.
+      // But we skipped the arrayMove. We STILL must save the new listId to the DB!
+      const prevCard = items[activeIndex - 1];
+      const nextCard = items[activeIndex + 1];
       const newRank = generateNewRank(prevCard?.rank, nextCard?.rank);
 
       dispatch(updateCardPosition({ 
