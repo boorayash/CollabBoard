@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { getSocket } from '../../socket/socketClient';
+import { logout } from './authSlice';
 
 const API_URL = import.meta.env.API_URL;
 
@@ -80,6 +81,17 @@ export const deleteList = createAsyncThunk('board/deleteList', async (listId, th
     return listId;
   } catch (error) {
     return thunkAPI.rejectWithValue(error.response?.data?.message || 'Error deleting list');
+  }
+});
+
+export const updateBoard = createAsyncThunk('board/updateBoard', async ({ boardId, name }, thunkAPI) => {
+  try {
+    const response = await axios.patch(`${API_URL}/boards/${boardId}`, { name }, {
+      headers: getAuthHeader(),
+    });
+    return response.data.data.board;
+  } catch (error) {
+    return thunkAPI.rejectWithValue(error.response?.data?.message || 'Error updating board');
   }
 });
 
@@ -301,6 +313,10 @@ export const boardSlice = createSlice({
           }
         }
       })
+      .addCase(updateBoard.fulfilled, (state, action) => {
+        const board = state.boards.find(b => b.id === action.payload.id);
+        if (board) { board.name = action.payload.name; }
+      })
       .addCase(deleteList.fulfilled, (state, action) => {
         state.boards.forEach(board => {
           if (board.lists) {
@@ -316,7 +332,9 @@ export const boardSlice = createSlice({
             }
           });
         });
-      });
+      })
+      // Bug 2 fix: clear all board data when user logs out
+      .addCase(logout, () => initialState);
   },
 });
 

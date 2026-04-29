@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { logout } from './authSlice';
 
 const API_URL = import.meta.env.API_URL;
 
@@ -242,13 +243,14 @@ export const teamSlice = createSlice({
       .addCase(updateMemberRole.fulfilled, (state, action) => {
         const index = state.teamMembers.findIndex(m => m.userId === action.payload.userId);
         if (index !== -1) {
-          // Merge with existing member to keep nested user data if needed
           state.teamMembers[index] = { 
             ...state.teamMembers[index], 
             ...action.payload 
           };
         }
-      });
+      })
+      // Bug 2 fix: clear all team data when user logs out
+      .addCase(logout, () => initialState);
   },
 });
 
