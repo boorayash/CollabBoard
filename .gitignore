@@ -24,5 +24,9 @@ Thumbs.db
 # Agent & AI metadata
 .gemini/
 .agent/
+.agents/
+skills-lock.json
 my-session.md
 .planning/
+CollabBoard-landing.md
+spec.js
