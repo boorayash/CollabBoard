@@ -33,8 +33,24 @@ exports.signup = async (req, res) => {
           userId: user.id,
           teamId: team.id,
           role: 'ADMIN',
+          status: 'ACCEPTED',
         },
-      }); 
+      });
+
+      // CB-001: auto-create default board + 3 lists for every new user
+      await tx.board.create({
+        data: {
+          name: 'Main Board',
+          teamId: team.id,
+          lists: {
+            create: [
+              { name: 'To Do',       rank: 'a' },
+              { name: 'In Progress', rank: 'b' },
+              { name: 'Done',        rank: 'c' },
+            ],
+          },
+        },
+      });
 
       return { user, teamId: team.id };
     });

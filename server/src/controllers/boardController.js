@@ -40,32 +40,51 @@ exports.getBoards = async (req, res) => {
   try {
     const { teamId } = req.query;
 
-    const boards = await prisma.board.findMany({
+    let boards = await prisma.board.findMany({
       where: {
         teamId,
         team: {
-          members: {
-            some: {
-              userId: req.user.id,
-            },
-          },
+          members: { some: { userId: req.user.id } },
         },
       },
       include: {
         lists: {
-          include: {
-            cards: true,
-          },
+          orderBy: { rank: 'asc' },
+          include: { cards: { orderBy: { rank: 'asc' } } },
         },
       },
     });
 
+    // Lazy init: if this team has no board yet, create the default one now
+    if (boards.length === 0) {
+      const newBoard = await prisma.board.create({
+        data: {
+          name: 'Main Board',
+          teamId,
+          lists: {
+            create: [
+              { name: 'To Do',       rank: 'a' },
+              { name: 'In Progress', rank: 'b' },
+              { name: 'Done',        rank: 'c' },
+            ],
+          },
+        },
+        include: {
+          lists: {
+            orderBy: { rank: 'asc' },
+            include: { cards: { orderBy: { rank: 'asc' } } },
+          },
+        },
+      });
+      boards = [newBoard];
+    }
+
     res.status(200).json({
       status: 'success',
       results: boards.length,
-      data: { 
+      data: {
         boards,
-        role: req.memberRole // Populated by authorize middleware
+        role: req.memberRole,
       },
     });
   } catch (err) {

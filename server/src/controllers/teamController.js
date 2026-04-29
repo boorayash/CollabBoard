@@ -21,21 +21,19 @@ exports.createTeam = async (req, res) => {
         },
       });
 
-      if (projectName) {
-        await tx.board.create({
-          data: {
-            name: projectName,
-            teamId: team.id,
-            lists: {
-              create: [
-                { name: 'To Do', rank: 'a' },
-                { name: 'In Progress', rank: 'b' },
-                { name: 'Done', rank: 'c' },
-              ]
-            }
-          },
-        });
-      }
+      await tx.board.create({
+        data: {
+          name: projectName || 'Main Board',
+          teamId: team.id,
+          lists: {
+            create: [
+              { name: 'To Do', rank: 'a' },
+              { name: 'In Progress', rank: 'b' },
+              { name: 'Done', rank: 'c' },
+            ]
+          }
+        },
+      });
 
       return team;
 
