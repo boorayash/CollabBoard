@@ -6,26 +6,18 @@ import {
   DialogActions,
   TextField,
   Button,
-  Box
 } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
-import {
-  createTeam
-} from '../store/slices/teamSlice';
+import { createTeam } from '../store/slices/teamSlice';
 
 const CreateTeamModal = ({ open, onClose }) => {
   const dispatch = useDispatch();
   const { isLoading } = useSelector((state) => state.team);
-
   const [teamName, setTeamName] = useState('');
-  const [projectName, setProjectName] = useState('');
 
   const handleCreateTeam = async () => {
-    if (!teamName.trim() || !projectName.trim()) return;
-
-    // Create Team and Board
-    const resultAction = await dispatch(createTeam({ name: teamName, projectName }));
-
+    if (!teamName.trim()) return;
+    const resultAction = await dispatch(createTeam({ name: teamName }));
     if (createTeam.fulfilled.match(resultAction)) {
       handleClose();
     }
@@ -33,22 +25,30 @@ const CreateTeamModal = ({ open, onClose }) => {
 
   const handleClose = () => {
     setTeamName('');
-    setProjectName('');
     onClose();
   };
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={handleClose}
+      BackdropProps={{
+        sx: {
+          backgroundColor: 'rgba(0, 0, 0, 0.1)',
+          backdropFilter: 'blur(4px)'
+        }
+      }}
       PaperProps={{
         sx: {
-          background: 'var(--glass-bg)',
-          backdropFilter: 'blur(var(--glass-blur))',
-          border: '1px solid var(--glass-border)',
+          background: 'rgba(255, 255, 255, 0.4)',
+          backdropFilter: 'blur(32px)',
+          WebkitBackdropFilter: 'blur(32px)',
+          border: '1px solid rgba(255, 255, 255, 0.5)',
           borderRadius: 3,
-          color: '#fff',
-          minWidth: '400px'
+          color: '#1d1d1f',
+          minWidth: '400px',
+          boxShadow: '0 24px 48px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)',
+          p: 2
         }
       }}
     >
@@ -61,33 +61,49 @@ const CreateTeamModal = ({ open, onClose }) => {
           value={teamName}
           onChange={(e) => setTeamName(e.target.value)}
           required
-          sx={{ input: { color: '#fff' }, label: { color: 'rgba(255,255,255,0.7)' }, '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' }, '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' } } }}
-        />
-        <TextField
-          label="Project Title (Initial Board)"
-          variant="outlined"
-          fullWidth
-          value={projectName}
-          onChange={(e) => setProjectName(e.target.value)}
-          required
-          sx={{ input: { color: '#fff' }, label: { color: 'rgba(255,255,255,0.7)' }, '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' }, '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' } } }}
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); handleCreateTeam(); }
+          }}
+          sx={{
+            input: { color: '#1d1d1f' },
+            label: { color: 'rgba(29, 29, 31, 0.7)' },
+            '& .MuiOutlinedInput-root': {
+              bgcolor: 'rgba(0,0,0,0.02)',
+              borderRadius: 2,
+              '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' },
+              '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.15)' },
+              '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)', borderWidth: '1px' },
+              '&.Mui-focused': { boxShadow: '0 0 0 4px rgba(59,130,246,0.15)' }
+            }
+          }}
         />
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
-        <Button onClick={handleClose} sx={{ color: 'rgba(255,255,255,0.7)' }}>
+        <Button
+          onClick={handleClose}
+          sx={{ color: 'rgba(29, 29, 31, 0.7)', textTransform: 'none', fontWeight: 500, px: 3 }}
+        >
           Cancel
         </Button>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           onClick={handleCreateTeam}
-          disabled={!teamName.trim() || !projectName.trim() || isLoading}
+          disabled={!teamName.trim() || isLoading}
           sx={{
             background: 'var(--color-primary)',
-            '&:hover': { background: 'var(--color-primary-hover)' },
-            '&:disabled': { background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.3)' }
+            color: '#fff',
+            textTransform: 'none',
+            fontWeight: 600,
+            px: 4,
+            py: 1,
+            borderRadius: 2,
+            boxShadow: '0 4px 12px rgba(0, 122, 255, 0.3)',
+            '&:hover': { background: '#0062cc', boxShadow: '0 6px 16px rgba(0, 122, 255, 0.4)' },
+            '&:disabled': { background: 'rgba(29, 29, 31, 0.05)', color: 'rgba(29, 29, 31, 0.3)', boxShadow: 'none' }
           }}
         >
-          Create Team
+          {isLoading ? 'Creating…' : 'Create Team'}
         </Button>
       </DialogActions>
     </Dialog>

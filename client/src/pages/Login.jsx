@@ -2,20 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Container, Box, Typography, TextField, Button, Alert } from '@mui/material';
 import { login, reset } from '../store/slices/authSlice';
-
-const textFieldSx = {
-  '& .MuiOutlinedInput-root': {
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    '& fieldset': { borderColor: 'var(--glass-border)' },
-    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
-    '&.Mui-focused fieldset': { 
-      borderColor: 'var(--color-primary)', 
-      boxShadow: '0 0 10px rgba(124, 58, 237, 0.5)' 
-    }
-  }
-};
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -24,11 +11,10 @@ const Login = () => {
   });
 
   const { email, password } = formData;
-
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { user, isLoading, isError, isSuccess, message } = useSelector(
+  const { isLoading, isError, isSuccess, message } = useSelector(
     (state) => state.auth
   );
 
@@ -53,83 +39,86 @@ const Login = () => {
   };
 
   return (
-    <Container maxWidth="xs" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-      <Box 
-        component={motion.div} 
-        initial={{ opacity: 0, y: 20 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        transition={{ duration: 0.5 }}
-        sx={{ 
-          p: 4, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center',
-          background: 'var(--glass-bg)',
-          backdropFilter: 'blur(var(--glass-blur))',
-          border: '1px solid var(--glass-border)',
-          borderRadius: 3,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-          width: '100%'
-        }}
+    <div className="w-full h-screen relative flex items-center justify-center overflow-hidden z-0">
+      {/* Background Orbs to match the application aesthetic */}
+      <div className="fluid-bg absolute inset-0 z-0">
+        <div className="orb orb-1" />
+        <div className="orb orb-2" />
+        <div className="orb orb-3" />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="glass-panel relative z-10 w-full max-w-md p-10 rounded-[32px] flex flex-col items-center mx-4"
       >
-        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" sx={{ color: '#fff' }}>
+        <h1 className="font-display font-extrabold text-[32px] tracking-tight text-[#1d1d1f] mb-2 text-center mt-2">
           CollabBoard
-        </Typography>
-        <Typography variant="body1" color="text.secondary" gutterBottom>
+        </h1>
+        <p className="text-[#1d1d1f]/60 font-medium text-[15px] mb-8 text-center">
           Log in to your account
-        </Typography>
+        </p>
 
-        {isError && <Alert severity="error" sx={{ width: '100%', mt: 2 }}>{message}</Alert>}
+        {isError && (
+          <div className="w-full bg-[#FF3B30]/10 border border-[#FF3B30]/20 text-[#FF3B30] px-4 py-3 rounded-2xl mb-6 text-sm font-semibold flex items-center justify-center">
+            {message}
+          </div>
+        )}
 
-        <Box component="form" onSubmit={onSubmit} sx={{ mt: 3, width: '100%' }}>
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            id="email"
-            label="Email Address"
-            name="email"
-            autoComplete="email"
-            autoFocus
-            value={email}
-            onChange={onChange}
-            sx={textFieldSx}
-          />
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            name="password"
-            label="Password"
-            type="password"
-            id="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={onChange}
-            sx={textFieldSx}
-          />
-          <Button
+        <form onSubmit={onSubmit} className="w-full flex flex-col gap-5">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] font-bold uppercase tracking-[1px] text-[#1d1d1f]/70 ml-1">
+              Email Address
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              autoComplete="email"
+              autoFocus
+              value={email}
+              onChange={onChange}
+              className="w-full bg-[#1d1d1f]/5 border border-[#1d1d1f]/10 rounded-2xl px-5 py-3.5 text-[15px] text-[#1d1d1f] font-medium transition-all placeholder-[#1d1d1f]/30 focus:bg-white/60 focus:border-[#007AFF]/50 focus:outline-none focus:ring-4 focus:ring-[#007AFF]/10 focus:shadow-sm"
+              placeholder="you@company.com"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] font-bold uppercase tracking-[1px] text-[#1d1d1f]/70 ml-1">
+              Password
+            </label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={onChange}
+              className="w-full bg-[#1d1d1f]/5 border border-[#1d1d1f]/10 rounded-2xl px-5 py-3.5 text-[15px] text-[#1d1d1f] font-medium transition-all placeholder-[#1d1d1f]/30 focus:bg-white/60 focus:border-[#007AFF]/50 focus:outline-none focus:ring-4 focus:ring-[#007AFF]/10 focus:shadow-sm"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <button
             type="submit"
-            fullWidth
-            variant="contained"
-            sx={{ 
-              mt: 3, mb: 2, height: 48, borderRadius: 2, textTransform: 'none', fontSize: '1rem',
-              background: 'var(--color-primary)',
-              '&:hover': { background: '#6d28d9' },
-              '&:active': { transform: 'scale(0.98)' }
-            }}
             disabled={isLoading}
+            className="w-full mt-2 bg-gradient-to-br from-[#007AFF] to-[#0056b3] text-white rounded-2xl py-3.5 font-bold text-[16px] transition-all duration-300 shadow-[0_8px_20px_-6px_rgba(0,122,255,0.4)] hover:shadow-[0_12px_24px_-8px_rgba(0,122,255,0.6)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Logging in...' : 'Log In'}
-          </Button>
-          <Box sx={{ textAlign: 'center' }}>
-            <Link to="/signup" style={{ textDecoration: 'none', color: '#7c4dff' }}>
-              Don't have an account? Sign Up
+          </button>
+
+          <div className="text-center mt-4 text-[14px] font-medium text-[#1d1d1f]/60">
+            Don't have an account?{' '}
+            <Link to="/signup" className="text-[#007AFF] font-bold hover:underline underline-offset-4 transition-all">
+              Sign Up
             </Link>
-          </Box>
-        </Box>
-      </Box>
-    </Container>
+          </div>
+        </form>
+      </motion.div>
+    </div>
   );
 };
 

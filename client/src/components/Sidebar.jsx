@@ -11,7 +11,7 @@ const Sidebar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const { myTeams, invitations } = useSelector((state) => state.team);
+  const { myTeams, invitations, currentTeam } = useSelector((state) => state.team);
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
@@ -35,149 +35,112 @@ const Sidebar = () => {
   };
 
   return (
-    <Box
-      sx={{
-        width: 250,
-        height: '100vh',
-        background: 'var(--glass-bg)',
-        backdropFilter: 'blur(var(--glass-blur))',
-        borderRight: '1px solid var(--glass-border)',
-        display: 'flex',
-        flexDirection: 'column',
-        p: 3,
-        flexShrink: 0,
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, gap: 1.5 }}>
-        <LayoutDashboard color="var(--color-primary)" size={28} />
-        <Typography variant="h5" sx={{ fontWeight: 700, color: '#fff', letterSpacing: '-0.5px' }}>
+    <aside className="w-[260px] flex-shrink-0 h-[calc(100vh-48px)] rounded-[32px] flex flex-col p-6 relative overflow-hidden glass-panel z-10 transition-all duration-500">
+      <div className="flex items-center gap-2.5 mb-8">
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#007AFF] to-[#34C759] flex items-center justify-center shadow-lg">
+          <LayoutDashboard color="#ffffff" size={20} />
+        </div>
+        <span className="font-display text-[22px] tracking-tight font-extrabold text-[#1d1d1f]">
           CollabBoard
-        </Typography>
-      </Box>
+        </span>
+      </div>
 
-      <Box sx={{ flexGrow: 1, overflowY: 'auto', pr: 1, mr: -1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-          <Typography variant="overline" sx={{ color: 'rgba(255,255,255,0.5)', fontWeight: 600, letterSpacing: '1px' }}>
+      <div className="flex-grow overflow-y-auto pr-1 -mr-1 custom-scrollbar">
+        <div className="flex items-center justify-between mb-3 px-2">
+          <span className="text-[11px] font-bold uppercase tracking-[1.5px] opacity-40">
             My Teams
-          </Typography>
-          <IconButton 
-            size="small" 
+          </span>
+          <button 
             onClick={() => setCreateModalOpen(true)}
-            sx={{ color: 'var(--color-primary)', bgcolor: 'rgba(124, 58, 237, 0.1)', '&:hover': { bgcolor: 'rgba(124, 58, 237, 0.2)' } }}
+            className="w-6 h-6 rounded-full bg-[#1d1d1f]/5 flex items-center justify-center text-[#1d1d1f] transition-all hover:bg-[#1d1d1f]/10"
           >
-            <Plus size={16} />
-          </IconButton>
-        </Box>
+            <Plus size={14} />
+          </button>
+        </div>
         
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 3 }}>
-          {myTeams.map((team) => (
-            <Button
-              key={team.id}
-              variant="text"
-              startIcon={<Users size={16} />}
-              onClick={() => dispatch(setCurrentTeam(team))}
-              sx={{
-                justifyContent: 'flex-start',
-                color: 'rgba(255,255,255,0.8)',
-                borderRadius: 2,
-                px: 2,
-                py: 1,
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '0.95rem',
-                '&:hover': {
-                  background: 'rgba(255,255,255,0.05)',
-                  color: '#fff'
-                }
-              }}
-            >
-              {team.name}
-            </Button>
-          ))}
+        <div className="flex flex-col gap-1.5 mb-6">
+          {myTeams.map((team) => {
+            const isActive = currentTeam?.id === team.id;
+            return (
+              <button
+                key={team.id}
+                onClick={() => dispatch(setCurrentTeam(team))}
+                className={`flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-2xl font-semibold text-[14px] transition-all duration-300 ${
+                  isActive 
+                    ? 'bg-[#007AFF]/10 text-[#007AFF] shadow-[inset_0_0_0_1px_rgba(0,122,255,0.2)]' 
+                    : 'text-[#1d1d1f]/70 bg-transparent hover:bg-white hover:text-[#1d1d1f] hover:shadow-sm'
+                }`}
+              >
+                <Users size={18} className={`transition-opacity ${isActive ? 'opacity-100' : 'opacity-60'}`} />
+                {team.name}
+              </button>
+            );
+          })}
           {myTeams.length === 0 && (
-            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', px: 1 }}>
-              No teams yet.
-            </Typography>
+            <span className="text-xs opacity-40 px-3 font-medium">No teams yet.</span>
           )}
-        </Box>
+        </div>
 
         {invitations.length > 0 && (
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="overline" sx={{ color: 'var(--color-secondary)', fontWeight: 600, letterSpacing: '1px', display: 'block', mb: 1 }}>
+          <div className="mb-6">
+            <span className="text-[11px] font-bold uppercase tracking-[1.5px] text-[#007AFF] mb-3 px-2 block">
               Invitations
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            </span>
+            <div className="flex flex-col gap-2">
               {invitations.map((inv) => (
-                <Box key={inv.teamId} sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <Typography variant="body2" sx={{ color: '#fff', mb: 1, fontWeight: 500 }}>
+                <div key={inv.teamId} className="p-3 rounded-[20px] bg-white/40 border border-white/60 shadow-sm backdrop-blur-md">
+                  <span className="text-[13px] font-semibold text-[#1d1d1f] mb-2 block">
                     {inv.team.name}
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button 
-                      size="small" 
+                  </span>
+                  <div className="flex gap-2">
+                    <button 
                       onClick={() => handleRespond(inv.teamId, 'ACCEPT')}
-                      sx={{ flex: 1, minWidth: 0, p: 0.5, bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#10B981', '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.2)' } }}
+                      className="flex-1 py-1.5 rounded-full bg-[#34C759]/10 text-[#34C759] flex items-center justify-center transition-all hover:bg-[#34C759]/20"
                     >
                       <Check size={16} />
-                    </Button>
-                    <Button 
-                      size="small" 
+                    </button>
+                    <button 
                       onClick={() => handleRespond(inv.teamId, 'REJECT')}
-                      sx={{ flex: 1, minWidth: 0, p: 0.5, bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.2)' } }}
+                      className="flex-1 py-1.5 rounded-full bg-[#FF3B30]/10 text-[#FF3B30] flex items-center justify-center transition-all hover:bg-[#FF3B30]/20"
                     >
                       <X size={16} />
-                    </Button>
-                  </Box>
-                </Box>
+                    </button>
+                  </div>
+                </div>
               ))}
-            </Box>
-          </Box>
+            </div>
+          </div>
         )}
-      </Box>
+      </div>
 
       <CreateTeamModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} />
 
-      <Divider sx={{ borderColor: 'var(--glass-border)', mb: 3 }} />
+      <div className="h-px w-full bg-[#1d1d1f]/5 my-5" />
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Avatar sx={{ bgcolor: 'var(--color-secondary)', width: 36, height: 36 }}>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3 px-2">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1d1d1f] to-[#3a3a3c] flex items-center justify-center text-white font-bold shadow-md">
             {user?.name?.charAt(0) || 'U'}
-          </Avatar>
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: '#fff' }}>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[14px] font-bold text-[#1d1d1f] leading-tight">
               {user?.name || 'User'}
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+            </span>
+            <span className="text-[12px] font-medium opacity-50">
               {user?.email}
-            </Typography>
-          </Box>
-        </Box>
+            </span>
+          </div>
+        </div>
 
-        <Button
-          fullWidth
-          variant="outlined"
-          startIcon={<LogOut size={18} />}
+        <button
           onClick={onLogout}
-          sx={{
-            color: 'rgba(255,255,255,0.7)',
-            borderColor: 'var(--glass-border)',
-            textTransform: 'none',
-            borderRadius: 2,
-            '&:hover': {
-              borderColor: 'rgba(255,255,255,0.3)',
-              color: '#fff',
-              background: 'rgba(255,255,255,0.05)',
-            },
-            '&:active': {
-              transform: 'scale(0.98)'
-            }
-          }}
+          className="w-full py-3 rounded-2xl border-2 border-[#1d1d1f]/5 text-[#1d1d1f] font-semibold flex items-center justify-center gap-2 transition-all hover:border-[#1d1d1f]/10 hover:bg-[#1d1d1f] hover:text-white group"
         >
+          <LogOut size={16} className="opacity-60 group-hover:opacity-100 transition-opacity" />
           Logout
-        </Button>
-      </Box>
-    </Box>
+        </button>
+      </div>
+    </aside>
   );
 };
 

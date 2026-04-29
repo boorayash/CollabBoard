@@ -107,14 +107,23 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
       onClose={handleClose}
       fullWidth
       maxWidth="xs"
+      BackdropProps={{
+        sx: {
+          backgroundColor: 'rgba(0, 0, 0, 0.1)',
+          backdropFilter: 'blur(4px)'
+        }
+      }}
       PaperProps={{
         sx: {
-          background: '#1e1e1e',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid var(--glass-border)',
+          background: 'rgba(255, 255, 255, 0.4)',
+          backdropFilter: 'blur(32px)',
+          WebkitBackdropFilter: 'blur(32px)',
+          border: '1px solid rgba(255, 255, 255, 0.5)',
           borderRadius: 3,
-          color: '#fff',
-          minHeight: '450px'
+          color: '#1d1d1f',
+          minHeight: '450px',
+          boxShadow: '0 24px 48px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)',
+          p: 2
         }
       }}
     >
@@ -124,8 +133,8 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
           onChange={handleTabChange} 
           variant="fullWidth"
           sx={{
-            borderBottom: '1px solid var(--glass-border)',
-            '& .MuiTab-root': { color: 'rgba(255,255,255,0.6)', textTransform: 'none', fontWeight: 600, minHeight: 64 },
+            borderBottom: '1px solid rgba(0,0,0,0.06)',
+            '& .MuiTab-root': { color: 'rgba(29, 29, 31, 0.6)', textTransform: 'none', fontWeight: 600, minHeight: 64 },
             '& .Mui-selected': { color: 'var(--color-primary) !important' },
             '& .MuiTabs-indicator': { backgroundColor: 'var(--color-primary)' }
           }}
@@ -144,12 +153,13 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
                 sx={{ 
                   px: 1, mb: 1, 
                   borderRadius: 2, 
-                  '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' }
+                  '&:hover': { bgcolor: 'rgba(29, 29, 31, 0.05)' }
                 }}
               >
                 <ListItemAvatar>
                   <Avatar sx={{ 
-                    bgcolor: member.role === 'ADMIN' ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)',
+                    bgcolor: member.role === 'ADMIN' ? 'var(--color-primary)' : 'rgba(29, 29, 31, 0.1)',
+                    color: member.role === 'ADMIN' ? '#fff' : '#1d1d1f',
                     width: 40, height: 40
                   }}>
                     {member.user?.name?.charAt(0) || '?'}
@@ -167,8 +177,8 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
                     </Box>
                   } 
                   secondary={member.userId === currentUser?.id ? 'You' : member.user?.email} 
-                  primaryTypographyProps={{ fontWeight: 600, color: '#fff' }}
-                  secondaryTypographyProps={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}
+                  primaryTypographyProps={{ fontWeight: 600, color: '#1d1d1f' }}
+                  secondaryTypographyProps={{ color: 'rgba(29, 29, 31, 0.5)', fontSize: '0.75rem' }}
                 />
                 
                 {isAdmin && (
@@ -177,7 +187,7 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
                       <IconButton 
                         size="small" 
                         onClick={() => handleToggleRole(member.userId, member.role)}
-                        sx={{ color: 'rgba(255,255,255,0.3)', '&:hover': { color: 'var(--color-secondary)' } }}
+                        sx={{ color: 'rgba(29, 29, 31, 0.4)', '&:hover': { color: 'var(--color-secondary)' } }}
                       >
                         {member.role === 'ADMIN' ? <UserMinus size={16} /> : <UserCheck size={16} />}
                       </IconButton>
@@ -188,7 +198,7 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
                         <IconButton 
                           size="small" 
                           onClick={() => handleRemoveMember(member.userId, member.user?.name)}
-                          sx={{ color: 'rgba(255,255,255,0.3)', '&:hover': { color: '#ff4444', background: 'rgba(255,68,68,0.1)' } }}
+                          sx={{ color: 'rgba(29, 29, 31, 0.4)', '&:hover': { color: '#ff4444', background: 'rgba(255,68,68,0.1)' } }}
                         >
                           <Trash2 size={16} />
                         </IconButton>
@@ -200,7 +210,7 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
             )) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 4, gap: 2 }}>
                 {isLoading ? <CircularProgress size={24} /> : (
-                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+                  <Typography variant="body2" sx={{ color: 'rgba(29, 29, 31, 0.5)' }}>
                     No members found.
                   </Typography>
                 )}
@@ -219,14 +229,26 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
                 placeholder="Enter exact name or email"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSearch();
+                  }
+                }}
                 sx={{ 
-                  input: { color: '#fff' }, 
+                  input: { color: '#1d1d1f' }, 
                   '& .MuiOutlinedInput-root': { 
-                    bgcolor: 'rgba(255,255,255,0.05)',
-                    '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
-                    '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
-                    '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' }
+                    bgcolor: 'rgba(0,0,0,0.02)',
+                    borderRadius: 2,
+                    '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' }, 
+                    '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.15)' },
+                    '&.Mui-focused fieldset': { 
+                      borderColor: 'var(--color-primary)',
+                      borderWidth: '1px'
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: '0 0 0 4px rgba(59,130,246,0.15)'
+                    }
                   } 
                 }}
               />
@@ -246,10 +268,10 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
                   key={user.id} 
                   sx={{ 
                     px: 1, 
-                    bgcolor: 'rgba(255,255,255,0.02)', 
+                    bgcolor: 'rgba(29, 29, 31, 0.03)', 
                     borderRadius: 2, 
                     mb: 1,
-                    border: '1px solid rgba(255,255,255,0.05)'
+                    border: '1px solid rgba(29, 29, 31, 0.05)'
                   }}
                 >
                   <ListItemAvatar>
@@ -260,8 +282,8 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
                   <ListItemText 
                     primary={user.name} 
                     secondary={user.email} 
-                    primaryTypographyProps={{ fontWeight: 600, color: '#fff', fontSize: '0.85rem' }}
-                    secondaryTypographyProps={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem' }}
+                    primaryTypographyProps={{ fontWeight: 600, color: '#1d1d1f', fontSize: '0.85rem' }}
+                    secondaryTypographyProps={{ color: 'rgba(29, 29, 31, 0.5)', fontSize: '0.75rem' }}
                   />
                   <Button 
                     variant="outlined" 
@@ -281,12 +303,12 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
                 </ListItem>
               ))}
               {searchPerformed && searchResults.length === 0 && !isLoading && (
-                <Typography variant="body2" sx={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', mt: 2 }}>
+                <Typography variant="body2" sx={{ textAlign: 'center', color: 'rgba(29, 29, 31, 0.5)', mt: 2 }}>
                   No user found with that exact name or email.
                 </Typography>
               )}
               {!searchPerformed && (
-                <Typography variant="body2" sx={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', mt: 4 }}>
+                <Typography variant="body2" sx={{ textAlign: 'center', color: 'rgba(29, 29, 31, 0.4)', mt: 4 }}>
                   Invite a partner to collaborate.
                 </Typography>
               )}
@@ -295,8 +317,8 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
         )}
       </DialogContent>
       
-      <DialogActions sx={{ p: 2, borderTop: '1px solid var(--glass-border)' }}>
-        <Button onClick={handleClose} sx={{ color: 'rgba(255,255,255,0.5)', textTransform: 'none' }}>
+      <DialogActions sx={{ p: 2, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+        <Button onClick={handleClose} sx={{ color: 'rgba(29, 29, 31, 0.6)', textTransform: 'none', fontWeight: 500, px: 3 }}>
           Close
         </Button>
       </DialogActions>

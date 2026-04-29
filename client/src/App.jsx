@@ -6,16 +6,17 @@ import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Board from './pages/Board';
+import Landing from './pages/Landing';
 
 const theme = createTheme({
   palette: {
-    mode: 'dark',
+    mode: 'light',
     primary: {
-      main: '#7c4dff',
+      main: '#007AFF', // matched to Tailwind --color-primary
     },
     background: {
-      default: '#121212',
-      paper: '#1e1e1e',
+      default: 'transparent',
+      paper: '#ffffff',
     },
   },
   typography: {
@@ -40,28 +41,11 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   const { user } = useSelector((state) => state.auth);
 
-  useEffect(() => {
-    if (user?.token) {
-      connectSocket(user.token);
-    } else {
-      disconnectSocket();
-    }
-    return () => {
-      disconnectSocket();
-    };
-  }, [user]);
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div style={{
-        minHeight: '100vh',
-        width: '100vw',
-        background: 'linear-gradient(135deg, #0F172A, #1E1B4B, #0F172A)',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden' // prevents body scroll jumping
-      }}>
+      <div className="w-full h-full min-h-screen flex flex-col overflow-hidden relative">
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
@@ -73,7 +57,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="/" element={<Landing />} />
         </Routes>
       </div>
     </ThemeProvider>

@@ -1,49 +1,50 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Box, Typography, Button, TextField, Stack, Skeleton, 
-  IconButton, Tooltip, Menu, MenuItem, ListItemIcon, 
+import {
+  Box, Typography, Button, TextField, Stack, Skeleton,
+  Menu, MenuItem, ListItemIcon,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions
 } from '@mui/material';
-import { fetchBoards, createList, createBoard, resetBoardDeleted } from '../store/slices/boardSlice';
-import { leaveTeam, setCurrentTeam } from '../store/slices/teamSlice';
+import { fetchBoards, createList, resetBoardDeleted, updateBoard } from '../store/slices/boardSlice';
+import { leaveTeam } from '../store/slices/teamSlice';
 import KanbanBoard from '../components/KanbanBoard';
 import Sidebar from '../components/Sidebar';
 import TeamMembersModal from '../components/TeamMembersModal';
-import { Plus, UserPlus, Users, Settings, LogOut } from 'lucide-react';
+import { Plus, UserPlus, Users, Settings, LogOut, Pencil, Check, X } from 'lucide-react';
 import { getInitialRank } from '../utils/ranks';
-import { joinBoard, leaveBoard } from '../socket/socketClient';
+import { connectSocket, disconnectSocket, joinBoard, leaveBoard } from '../socket/socketClient';
 import { setupBoardListeners, cleanupBoardListeners } from '../socket/boardEvents';
 
 const Board = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [newBoardName, setNewBoardName] = useState('');
+
   const [membersModalOpen, setMembersModalOpen] = useState(false);
   const [initialModalTab, setInitialModalTab] = useState(0);
-
-  // Settings Menu State
   const [anchorEl, setAnchorEl] = useState(null);
-  const openSettings = Boolean(anchorEl);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+
+  // Board rename state
+  const [isRenamingBoard, setIsRenamingBoard] = useState(false);
+  const [boardNameDraft, setBoardNameDraft] = useState('');
+  const renameInputRef = useRef(null);
+
+  const openSettings = Boolean(anchorEl);
 
   const { user } = useSelector((state) => state.auth);
   const { currentTeam } = useSelector((state) => state.team);
   const { boards, role, isLoading, boardDeleted } = useSelector((state) => state.board);
-  
+
   const board = boards.find((b) => b.id === id) || boards[0];
   const teamId = currentTeam?.id || board?.teamId || user?.teamId;
   const isAdmin = role === 'ADMIN';
 
   useEffect(() => {
-    if (teamId) {
-      dispatch(fetchBoards(teamId));
-    }
+    if (teamId) dispatch(fetchBoards(teamId));
   }, [dispatch, teamId]);
 
-  // Redirection if board was deleted
   useEffect(() => {
     if (boardDeleted === id) {
       alert('This board has been deleted by an admin.');
@@ -52,26 +53,22 @@ const Board = () => {
     }
   }, [boardDeleted, id, navigate, dispatch]);
 
-  // Socket: join/leave board room
   useEffect(() => {
-    if (board?.id) {
-      joinBoard(board.id);
-      setupBoardListeners();
-    }
+    if (user?.token) connectSocket(user.token);
+    if (board?.id) { joinBoard(board.id); setupBoardListeners(); }
     return () => {
-      if (board?.id) {
-        leaveBoard(board.id);
-      }
+      if (board?.id) leaveBoard(board.id);
       cleanupBoardListeners();
+      disconnectSocket();
     };
-  }, [board?.id]);
+  }, [user, board?.id]);
 
-  const onCreateBoard = () => {
-    if (newBoardName.trim() && teamId) {
-      dispatch(createBoard({ name: newBoardName, teamId }));
-      setNewBoardName('');
+  // Auto-focus rename input when opened
+  useEffect(() => {
+    if (isRenamingBoard) {
+      setTimeout(() => renameInputRef.current?.focus(), 50);
     }
-  };
+  }, [isRenamingBoard]);
 
   const onAddList = () => {
     const name = prompt('Enter list name:');
@@ -80,18 +77,9 @@ const Board = () => {
     }
   };
 
-  const openMembersModal = (tab) => {
-    setInitialModalTab(tab);
-    setMembersModalOpen(true);
-  };
-
-  const handleSettingsClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleSettingsClose = () => {
-    setAnchorEl(null);
-  };
+  const openMembersModal = (tab) => { setInitialModalTab(tab); setMembersModalOpen(true); };
+  const handleSettingsClick = (e) => setAnchorEl(e.currentTarget);
+  const handleSettingsClose = () => setAnchorEl(null);
 
   const handleLeaveTeam = async () => {
     if (teamId) {
@@ -104,238 +92,250 @@ const Board = () => {
     }
   };
 
+  const startRename = () => {
+    setBoardNameDraft(board?.name || '');
+    setIsRenamingBoard(true);
+    handleSettingsClose();
+  };
+
+  const commitRename = async () => {
+    if (boardNameDraft.trim() && board && boardNameDraft.trim() !== board.name) {
+      await dispatch(updateBoard({ boardId: board.id, name: boardNameDraft.trim() }));
+    }
+    setIsRenamingBoard(false);
+  };
+
+  const cancelRename = () => setIsRenamingBoard(false);
+
+  // Header subtitle based on load state (CB-004)
+  const headerSubtitle = isLoading
+    ? 'Loading…'
+    : board?.name ?? 'No board';
+
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'row' }}>
+    <div className="w-full h-screen flex p-6 gap-6 relative z-0">
+      {/* Background Orbs */}
+      <div className="fluid-bg">
+        <div className="orb orb-1" />
+        <div className="orb orb-2" />
+        <div className="orb orb-3" />
+      </div>
+
       <Sidebar />
 
-      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-        {/* Header */}
-        <Box sx={{ 
-          p: 2, px: 4, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          background: 'rgba(255, 255, 255, 0.02)',
-          borderBottom: '1px solid var(--glass-border)',
-          backdropFilter: 'blur(10px)'
-        }}>
-          <Box>
-            <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700 }}>
-              {currentTeam?.name || 'Project Board'}
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>
-              {board?.name || 'Loading...'}
-            </Typography>
-          </Box>
+      <main className="flex-1 flex flex-col min-w-0 z-10 overflow-hidden items-center">
+        <div className="flex-1 flex flex-col gap-8 w-full max-w-[1600px] h-full py-4">
+          {/* Header */}
+          <header className="flex justify-between items-center px-6 h-16 shrink-0 z-10">
+            <div className="flex items-center gap-3">
+              <div className="font-display text-2xl tracking-tight font-extrabold text-[#1d1d1f]">
+                {currentTeam?.name || 'Project Board'}
+              </div>
 
-          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-            <Button 
-              variant="text" 
-              startIcon={<Users size={18} />}
-              onClick={() => openMembersModal(0)}
-              sx={{ color: 'rgba(255,255,255,0.7)', textTransform: 'none', fontWeight: 600, '&:hover': { color: '#fff', background: 'rgba(255,255,255,0.05)' } }}
-            >
-              View Members
-            </Button>
-            
-            {isAdmin && (
-              <Button 
-                variant="contained" 
-                startIcon={<UserPlus size={18} />}
-                onClick={() => openMembersModal(1)}
-                sx={{ 
-                  bgcolor: 'rgba(124, 58, 237, 0.1)', 
-                  color: 'var(--color-primary)', 
-                  textTransform: 'none', 
-                  fontWeight: 600,
-                  border: '1px solid rgba(124, 58, 237, 0.2)',
-                  '&:hover': { bgcolor: 'rgba(124, 58, 237, 0.2)', border: '1px solid var(--color-primary)' }
+              {/* Board name — editable for admin */}
+              {isRenamingBoard ? (
+                <div className="flex items-center gap-1 ml-2">
+                  <input
+                    ref={renameInputRef}
+                    value={boardNameDraft}
+                    onChange={(e) => setBoardNameDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') commitRename();
+                      if (e.key === 'Escape') cancelRename();
+                    }}
+                    className="text-sm font-medium text-[#1d1d1f] bg-white/60 border border-[#007AFF]/40 rounded-lg px-3 py-1 outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 transition-all w-40"
+                  />
+                  <button onClick={commitRename} className="p-1 text-green-600 hover:bg-green-50 rounded-md transition-colors">
+                    <Check size={15} />
+                  </button>
+                  <button onClick={cancelRename} className="p-1 text-gray-400 hover:bg-gray-100 rounded-md transition-colors">
+                    <X size={15} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 ml-2 group">
+                  <span className="text-sm font-medium text-[#1d1d1f]/50">{headerSubtitle}</span>
+                  {isAdmin && board && !isLoading && (
+                    <button
+                      onClick={startRename}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-[#1d1d1f]/40 hover:text-[#007AFF] hover:bg-white/60 rounded-md transition-all"
+                      title="Rename board"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+              <button
+                onClick={() => openMembersModal(0)}
+                className="bg-white/30 border border-white/40 shadow-sm backdrop-blur-md text-[#1d1d1f] px-6 py-2.5 rounded-full font-semibold text-sm cursor-pointer transition-all duration-300 hover:bg-white hover:-translate-y-0.5 hover:shadow-md flex items-center gap-2"
+              >
+                <Users size={18} />
+                View Members
+              </button>
+
+              {isAdmin && (
+                <button
+                  onClick={() => openMembersModal(1)}
+                  className="bg-[#1d1d1f] text-white px-6 py-2.5 rounded-full font-semibold text-sm cursor-pointer transition-all duration-300 hover:bg-black hover:-translate-y-0.5 hover:shadow-lg flex items-center gap-2"
+                >
+                  <UserPlus size={18} />
+                  Add User
+                </button>
+              )}
+
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 bg-white/30 border border-white/40 text-[#1d1d1f] hover:bg-white hover:-translate-y-0.5 hover:scale-105 shadow-sm ml-2"
+                onClick={handleSettingsClick}
+              >
+                <Settings size={20} />
+              </div>
+
+              <Menu
+                anchorEl={anchorEl}
+                open={openSettings}
+                onClose={handleSettingsClose}
+                PaperProps={{
+                  sx: {
+                    mt: 1.5,
+                    bgcolor: 'rgba(255, 255, 255, 0.4)',
+                    backdropFilter: 'blur(32px)',
+                    WebkitBackdropFilter: 'blur(32px)',
+                    color: '#1d1d1f',
+                    border: '1px solid rgba(255, 255, 255, 0.5)',
+                    boxShadow: '0 24px 48px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)',
+                    borderRadius: 2,
+                    '& .MuiMenuItem-root': { py: 1.5, px: 2, '&:hover': { bgcolor: 'rgba(29, 29, 31, 0.05)' } }
+                  }
                 }}
               >
-                Add User
-              </Button>
-            )}
-            
-            <IconButton 
-              onClick={handleSettingsClick}
-              sx={{ color: 'rgba(255,255,255,0.5)', '&:hover': { color: '#fff', background: 'rgba(255,255,255,0.05)' } }}
-            >
-              <Settings size={20} />
-            </IconButton>
-
-            <Menu
-              anchorEl={anchorEl}
-              open={openSettings}
-              onClose={handleSettingsClose}
-              PaperProps={{
-                sx: { 
-                  mt: 1.5, 
-                  bgcolor: '#1e1e1e', 
-                  color: '#fff', 
-                  border: '1px solid var(--glass-border)',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                  '& .MuiMenuItem-root': { py: 1.5, px: 2 }
-                }
-              }}
-            >
-              {/* Future: Rename/Delete Board for Admins */}
-              <MenuItem onClick={() => setLeaveDialogOpen(true)} sx={{ color: '#ff4444' }}>
-                <ListItemIcon sx={{ color: '#ff4444' }}>
-                  <LogOut size={18} />
-                </ListItemIcon>
-                Leave Team
-              </MenuItem>
-            </Menu>
-          </Stack>
-        </Box>
-
-        {/* Kanban Area */}
-        <Box sx={{ flexGrow: 1, p: 4, overflowX: 'auto', overflowY: 'hidden', display: 'flex', alignItems: 'flex-start', justifyContent: board ? 'flex-start' : 'center', position: 'relative' }}>
-          {isLoading ? (
-            <Box sx={{ display: 'flex', gap: 3, height: '100%', width: '100%' }}>
-              <Skeleton variant="rounded" width={320} height={500} sx={{ bgcolor: 'var(--glass-bg)', borderRadius: 3 }} />
-              <Skeleton variant="rounded" width={320} height={300} sx={{ bgcolor: 'var(--glass-bg)', borderRadius: 3 }} />
-              <Skeleton variant="rounded" width={320} height={400} sx={{ bgcolor: 'var(--glass-bg)', borderRadius: 3 }} />
-            </Box>
-          ) : board ? (
-            <>
-              {(!board.lists || board.lists.length === 0) ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', width: '100%', gap: 3 }}>
-                  <Typography variant="h5" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                    {isAdmin ? 'Create your first list' : 'No lists yet'}
-                  </Typography>
-                  {isAdmin && (
-                    <Button 
-                      onClick={onAddList} 
-                      variant="contained" 
-                      startIcon={<Plus size={20} />}
-                      sx={{ 
-                        bgcolor: 'var(--color-primary)', height: 48, px: 4, borderRadius: 2,
-                        textTransform: 'none', fontSize: '1rem',
-                        '&:hover': { bgcolor: '#6d28d9' },
-                        '&:active': { transform: 'scale(0.98)' }
-                      }}
-                    >
-                      Add List
-                    </Button>
-                  )}
-                </Box>
-              ) : (
-                <>
-                  <KanbanBoard initialData={board.lists} />
-                  {isAdmin && (
-                    <Button 
-                      onClick={onAddList} 
-                      variant="outlined" 
-                      startIcon={<Plus size={20} />}
-                      sx={{ 
-                        minWidth: 280, 
-                        ml: 2, 
-                        height: 56, 
-                        borderRadius: 2,
-                        border: '1px dashed var(--glass-border)', 
-                        color: 'rgba(255,255,255,0.7)',
-                        background: 'var(--glass-bg)',
-                        backdropFilter: 'blur(var(--glass-blur))',
-                        textTransform: 'none',
-                        fontSize: '1rem',
-                        flexShrink: 0,
-                        '&:hover': {
-                          background: 'rgba(255,255,255,0.1)',
-                          borderColor: 'var(--color-secondary)'
-                        },
-                        '&:active': { transform: 'scale(0.98)' }
-                      }}
-                    >
-                    Add List
-                    </Button>
-                  )}
-                </>
-              )}
-            </>
-          ) : (
-            <Stack spacing={3} alignItems="center" sx={{ 
-              mt: 10, p: 5, borderRadius: 3, 
-              background: 'var(--glass-bg)', backdropFilter: 'blur(var(--glass-blur))',
-              border: '1px solid var(--glass-border)'
-             }}>
-               <Typography variant="h5" sx={{ fontWeight: 700, color: '#fff' }}>Welcome to CollabBoard!</Typography>
-               <Typography sx={{ color: 'rgba(255,255,255,0.7)' }}>You don't have any boards yet. Create your first one to get started.</Typography>
-               <Stack direction="row" spacing={2} sx={{ width: '100%' }}>
-                  <TextField 
-                    size="small" 
-                    fullWidth
-                    placeholder="Board Name (e.g. Sprint 1)" 
-                    value={newBoardName}
-                    onChange={(e) => setNewBoardName(e.target.value)}
-                    sx={{ 
-                      bgcolor: 'rgba(0,0,0,0.2)', 
-                      borderRadius: 1,
-                      '& .MuiOutlinedInput-root': { 
-                        '& fieldset': { borderColor: 'var(--glass-border)' },
-                        '&.Mui-focused fieldset': { borderColor: 'var(--color-primary)' }
-                      },
-                      input: { color: '#fff' }
-                    }}
-                  />
-                  <Button 
-                    variant="contained" 
-                    onClick={onCreateBoard} 
-                    disabled={!newBoardName.trim()}
-                    sx={{ 
-                      bgcolor: 'var(--color-primary)', textTransform: 'none',
-                      '&:hover': { bgcolor: '#6d28d9' }
-                    }}
-                  >
-                    Create Board
-                  </Button>
-               </Stack>
+                {isAdmin && board && (
+                  <MenuItem onClick={startRename}>
+                    <ListItemIcon sx={{ color: '#1d1d1f' }}>
+                      <Pencil size={16} />
+                    </ListItemIcon>
+                    Rename Board
+                  </MenuItem>
+                )}
+                <MenuItem onClick={() => { setLeaveDialogOpen(true); handleSettingsClose(); }} sx={{ color: '#ff4444' }}>
+                  <ListItemIcon sx={{ color: '#ff4444' }}>
+                    <LogOut size={18} />
+                  </ListItemIcon>
+                  Leave Team
+                </MenuItem>
+              </Menu>
             </Stack>
-          )}
-        </Box>
-      </Box>
+          </header>
 
-      <TeamMembersModal 
-        open={membersModalOpen} 
-        onClose={() => setMembersModalOpen(false)} 
+          {/* Kanban Area */}
+          <div className="flex-1 overflow-x-auto kanban-scroll pb-8">
+            {isLoading ? (
+              <Box sx={{ display: 'flex', gap: 3, height: '100%', width: '100%', justifyContent: 'center', py: 4 }}>
+                <Skeleton variant="rounded" width={320} height={500} sx={{ bgcolor: 'var(--glass-bg)', borderRadius: 3 }} />
+                <Skeleton variant="rounded" width={320} height={300} sx={{ bgcolor: 'var(--glass-bg)', borderRadius: 3 }} />
+                <Skeleton variant="rounded" width={320} height={400} sx={{ bgcolor: 'var(--glass-bg)', borderRadius: 3 }} />
+              </Box>
+            ) : board ? (
+              <div className="flex justify-center min-w-full items-start">
+                {(!board.lists || board.lists.length === 0) ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', width: '100%', gap: 3 }}>
+                    <Typography variant="h5" sx={{ color: 'rgba(29,29,31,0.5)', fontWeight: 600 }}>
+                      {isAdmin ? 'Create your first list' : 'No lists yet'}
+                    </Typography>
+                    {isAdmin && (
+                      <Button
+                        onClick={onAddList}
+                        variant="contained"
+                        startIcon={<Plus size={20} />}
+                        sx={{
+                          bgcolor: 'var(--color-primary)', height: 48, px: 4, borderRadius: 2,
+                          textTransform: 'none', fontSize: '1rem',
+                          '&:hover': { bgcolor: '#0062cc' },
+                          '&:active': { transform: 'scale(0.98)' }
+                        }}
+                      >
+                        Add List
+                      </Button>
+                    )}
+                  </Box>
+                ) : (
+                  <div className="flex gap-6 items-start px-12 py-4 mx-auto w-max">
+                    <KanbanBoard initialData={board.lists} />
+                    {isAdmin && (
+                      <Button
+                        onClick={onAddList}
+                        variant="outlined"
+                        startIcon={<Plus size={20} />}
+                        sx={{
+                          minWidth: 280,
+                          height: 56,
+                          borderRadius: 2,
+                          border: '1px dashed var(--glass-border)',
+                          color: 'rgba(255,255,255,0.7)',
+                          background: 'var(--glass-bg)',
+                          backdropFilter: 'blur(var(--glass-blur))',
+                          textTransform: 'none',
+                          fontSize: '1rem',
+                          flexShrink: 0,
+                          '&:hover': { background: 'rgba(255,255,255,0.1)', borderColor: 'var(--color-secondary)' },
+                          '&:active': { transform: 'scale(0.98)' }
+                        }}
+                      >
+                        Add List
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* No board exists — should not happen with CB-001, but defensive fallback */
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
+                <Typography sx={{ color: 'rgba(29,29,31,0.4)', fontWeight: 500 }}>
+                  No board available for this team.
+                </Typography>
+              </Box>
+            )}
+          </div>
+        </div>
+      </main>
+
+      <TeamMembersModal
+        open={membersModalOpen}
+        onClose={() => setMembersModalOpen(false)}
         teamId={teamId}
         initialTab={initialModalTab}
       />
 
-      {/* Leave Team Confirmation Dialog */}
+      {/* Leave Team Dialog */}
       <Dialog
         open={leaveDialogOpen}
         onClose={() => setLeaveDialogOpen(false)}
+        BackdropProps={{ sx: { backgroundColor: 'rgba(0,0,0,0.1)', backdropFilter: 'blur(4px)' } }}
         PaperProps={{
           sx: {
-            background: '#1e1e1e',
-            color: '#fff',
-            border: '1px solid var(--glass-border)',
-            borderRadius: 3
+            background: 'rgba(255,255,255,0.4)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
+            border: '1px solid rgba(255,255,255,0.5)', borderRadius: 3, color: '#1d1d1f',
+            boxShadow: '0 24px 48px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)', p: 2
           }
         }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>Leave Team?</DialogTitle>
         <DialogContent>
-          <DialogContentText sx={{ color: 'rgba(255,255,255,0.7)' }}>
+          <DialogContentText sx={{ color: 'rgba(29,29,31,0.7)' }}>
             Are you sure you want to leave this team? You will lose access to all boards and data associated with it.
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setLeaveDialogOpen(false)} sx={{ color: 'rgba(255,255,255,0.6)' }}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleLeaveTeam} 
-            variant="contained" 
-            color="error"
-            sx={{ fontWeight: 600, textTransform: 'none', borderRadius: 2 }}
-          >
+          <Button onClick={() => setLeaveDialogOpen(false)} sx={{ color: 'rgba(29,29,31,0.6)' }}>Cancel</Button>
+          <Button onClick={handleLeaveTeam} variant="contained" color="error" sx={{ fontWeight: 600, textTransform: 'none', borderRadius: 2 }}>
             Leave Team
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </div>
   );
 };
 

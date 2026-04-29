@@ -11,6 +11,7 @@ import { generateNewRank } from '../utils/ranks';
 
 const KanbanBoard = ({ initialData }) => {
   const [lists, setLists] = useState(initialData);
+  const [activeColumnId, setActiveColumnId] = useState(null); // CB-007: one form at a time
 
   useEffect(() => {
     setLists(initialData);
@@ -151,15 +152,20 @@ const KanbanBoard = ({ initialData }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start', height: '100%' }}>
-      <DndContext 
+    <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start', height: '100%', width: 'max-content' }}>
+      <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
         {lists.map((list) => (
-          <ListColumn key={list.id} list={list} />
+          <ListColumn
+            key={list.id}
+            list={list}
+            activeColumnId={activeColumnId}
+            setActiveColumnId={setActiveColumnId}
+          />
         ))}
       </DndContext>
     </Box>
