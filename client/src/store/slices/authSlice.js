@@ -31,6 +31,23 @@ export const login = createAsyncThunk('auth/login', async (userData, thunkAPI) =
   }
 });
 
+export const updateProfile = createAsyncThunk('auth/updateProfile', async (userData, thunkAPI) => {
+  try {
+    const token = thunkAPI.getState().auth.user.token;
+    const config = { headers: { Authorization: `Bearer ${token}` } };
+    const response = await axios.put(`${API_URL}/profile`, userData, config);
+    
+    // Update local storage
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+    const updatedUser = { ...currentUser, ...response.data.data.user };
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    
+    return updatedUser;
+  } catch (error) {
+    return thunkAPI.rejectWithValue(error.response?.data?.message || error.message);
+  }
+});
+
 const initialState = {
   user: JSON.parse(localStorage.getItem('user')) || null,
   isError: false,
@@ -83,6 +100,19 @@ export const authSlice = createSlice({
         state.isError = true;
         state.message = action.payload;
         state.user = null;
+      })
+      .addCase(updateProfile.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.user = action.payload; // Set the updated user with token preserved
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
       });
   },
 });

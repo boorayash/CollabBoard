@@ -157,3 +157,33 @@ exports.searchUsers = async (req, res) => {
     res.status(500).json({ message: 'Error searching users', error: err.message });
   }
 };
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, password } = req.body;
+    const userId = req.user.id;
+
+    const dataToUpdate = {};
+    if (name) dataToUpdate.name = name;
+    if (password) {
+      dataToUpdate.password = await bcrypt.hash(password, 12);
+    }
+
+    if (Object.keys(dataToUpdate).length === 0) {
+      return res.status(400).json({ message: 'No data provided to update' });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: dataToUpdate,
+      select: { id: true, name: true, email: true },
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: { user: updatedUser },
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating profile', error: err.message });
+  }
+};

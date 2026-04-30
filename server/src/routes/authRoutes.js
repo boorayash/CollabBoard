@@ -10,5 +10,6 @@ router.post('/login', authController.login);
 
 router.use(protect);
 router.get('/users/search', authController.searchUsers);
+router.put('/profile', authController.updateProfile);
 
 module.exports = router;
