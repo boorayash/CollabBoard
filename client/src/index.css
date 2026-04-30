@@ -249,3 +249,31 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.25),
     0 20px 50px rgba(0, 0, 0, 0.12);
 }
+
+@keyframes messageSlideUp {
+  0% { 
+    opacity: 0; 
+    transform: translateY(60px) scale(0.9); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+.animate-message-in {
+  animation: messageSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+.kanban-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 2rem;
+  padding: 2rem;
+  min-height: calc(100vh - 200px);
+  align-items: flex-start;
+}
+
+.kanban-scroll .glass-column {
+  flex: 0 0 320px;
+  width: 320px;
+}

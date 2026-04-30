@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Divider, Avatar, IconButton, Menu, MenuItem } from '@mui/material';
-import { LogOut, LayoutDashboard, Plus, Check, X, Users, MoreVertical, Edit2 } from 'lucide-react';
+import { LogOut, LayoutDashboard, Plus, Check, X, Users, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout, reset } from '../store/slices/authSlice';
-import { fetchMyTeams, fetchInvitations, respondToInvite, setCurrentTeam } from '../store/slices/teamSlice';
+import { fetchMyTeams, fetchInvitations, respondToInvite, setCurrentTeam, deleteTeam } from '../store/slices/teamSlice';
 import CreateTeamModal from './CreateTeamModal';
 import EditProfileModal from './EditProfileModal';
+import ConfirmDialog from './ConfirmDialog';
+import ErrorDialog from './ErrorDialog';
 
 const Sidebar = () => {
   const dispatch = useDispatch();
@@ -16,6 +18,10 @@ const Sidebar = () => {
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [teamToDelete, setTeamToDelete] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
@@ -38,6 +44,26 @@ const Sidebar = () => {
         dispatch(fetchMyTeams());
       }
     });
+  };
+
+  const handleDeleteClick = (teamId, teamName) => {
+    setTeamToDelete({ id: teamId, name: teamName });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (teamToDelete) {
+      const result = await dispatch(deleteTeam(teamToDelete.id));
+      if (deleteTeam.fulfilled.match(result)) {
+        dispatch(fetchMyTeams());
+        setDeleteDialogOpen(false);
+        setTeamToDelete(null);
+      } else {
+        setErrorMessage(result.payload || 'Failed to delete the team.');
+        setErrorDialogOpen(true);
+        setDeleteDialogOpen(false);
+      }
+    }
   };
 
   return (
@@ -67,19 +93,34 @@ const Sidebar = () => {
         <div className="flex flex-col gap-1.5 mb-6">
           {myTeams.map((team) => {
             const isActive = currentTeam?.id === team.id;
+            const isAdmin = team.members?.some(m => m.userId === user?.id && m.role === 'ADMIN');
+
             return (
-              <button
-                key={team.id}
-                onClick={() => dispatch(setCurrentTeam(team))}
-                className={`flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-2xl font-semibold text-[14px] transition-all duration-300 ${
-                  isActive 
-                    ? 'bg-[#007AFF]/10 text-[#007AFF] shadow-[inset_0_0_0_1px_rgba(0,122,255,0.2)]' 
-                    : 'text-[#1d1d1f]/70 bg-transparent hover:bg-white hover:text-[#1d1d1f] hover:shadow-sm'
-                }`}
-              >
-                <Users size={18} className={`transition-opacity ${isActive ? 'opacity-100' : 'opacity-60'}`} />
-                {team.name}
-              </button>
+              <div key={team.id} className="relative group/item">
+                <button
+                  onClick={() => dispatch(setCurrentTeam(team))}
+                  className={`flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-2xl font-semibold text-[14px] transition-all duration-300 ${
+                    isActive 
+                      ? 'bg-[#007AFF]/10 text-[#007AFF] shadow-[inset_0_0_0_1px_rgba(0,122,255,0.2)]' 
+                      : 'text-[#1d1d1f]/70 bg-transparent hover:bg-white hover:text-[#1d1d1f] hover:shadow-sm'
+                  }`}
+                >
+                  <Users size={18} className={`transition-opacity ${isActive ? 'opacity-100' : 'opacity-60'}`} />
+                  <span className="truncate flex-grow">{team.name}</span>
+                </button>
+                
+                {isAdmin && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick(team.id, team.name);
+                    }}
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-[#FF3B30] opacity-0 group-hover/item:opacity-60 hover:!opacity-100 hover:bg-[#FF3B30]/10 transition-all duration-200 ${isActive ? 'mr-1' : ''}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             );
           })}
           {myTeams.length === 0 && (
@@ -184,6 +225,22 @@ const Sidebar = () => {
       </div>
       
       <EditProfileModal open={editProfileOpen} onClose={() => setEditProfileOpen(false)} />
+      
+      <ConfirmDialog 
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title={`Delete "${teamToDelete?.name}"?`}
+        message={`Are you sure you want to permanently delete this team? This will remove all associated boards, cards, and messages for all members. This action is irreversible.`}
+        confirmText="Delete Permanently"
+        type="danger"
+      />
+
+      <ErrorDialog 
+        open={errorDialogOpen}
+        onClose={() => setErrorDialogOpen(false)}
+        message={errorMessage}
+      />
     </aside>
   );
 };

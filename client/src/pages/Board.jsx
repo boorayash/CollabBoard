@@ -3,15 +3,17 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Button, TextField, Stack, Skeleton,
-  Menu, MenuItem, ListItemIcon,
+  Menu, MenuItem, ListItemIcon, IconButton,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions
 } from '@mui/material';
 import { fetchBoards, createList, resetBoardDeleted, updateBoard } from '../store/slices/boardSlice';
-import { leaveTeam } from '../store/slices/teamSlice';
+import { leaveTeam, fetchTeamMembers } from '../store/slices/teamSlice';
 import KanbanBoard from '../components/KanbanBoard';
 import Sidebar from '../components/Sidebar';
 import TeamMembersModal from '../components/TeamMembersModal';
 import ChatDrawer from '../components/ChatDrawer';
+import ConfirmDialog from '../components/ConfirmDialog';
+import ErrorDialog from '../components/ErrorDialog';
 import { Plus, UserPlus, Users, Settings, LogOut, Pencil, Check, X, MessageCircle, LayoutList } from 'lucide-react';
 import { getInitialRank } from '../utils/ranks';
 import { connectSocket, disconnectSocket, joinBoard, leaveBoard } from '../socket/socketClient';
@@ -27,12 +29,18 @@ const Board = () => {
   const [initialModalTab, setInitialModalTab] = useState(0);
   const [anchorEl, setAnchorEl] = useState(null);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [myTasksFilter, setMyTasksFilter] = useState(false);
 
   // Board rename state
   const [isRenamingBoard, setIsRenamingBoard] = useState(false);
   const [boardNameDraft, setBoardNameDraft] = useState('');
   const renameInputRef = useRef(null);
+
+  // New List State
+  const [newListDialogOpen, setNewListDialogOpen] = useState(false);
+  const [newListName, setNewListName] = useState('');
 
   const openSettings = Boolean(anchorEl);
 
@@ -49,8 +57,13 @@ const Board = () => {
   }, [dispatch, teamId]);
 
   useEffect(() => {
+    if (teamId) dispatch(fetchTeamMembers(teamId));
+  }, [dispatch, teamId]);
+
+  useEffect(() => {
     if (boardDeleted === id) {
-      alert('This board has been deleted by an admin.');
+      setErrorMessage('This board has been deleted by an admin.');
+      setErrorDialogOpen(true);
       dispatch(resetBoardDeleted());
       navigate('/board/default');
     }
@@ -74,9 +87,18 @@ const Board = () => {
   }, [isRenamingBoard]);
 
   const onAddList = () => {
-    const name = prompt('Enter list name:');
-    if (name && board) {
-      dispatch(createList({ name, boardId: board.id, rank: getInitialRank(board.lists?.length || 0) }));
+    setNewListName('');
+    setNewListDialogOpen(true);
+  };
+
+  const handleCreateList = () => {
+    if (newListName.trim() && board) {
+      dispatch(createList({ 
+        name: newListName.trim(), 
+        boardId: board.id, 
+        rank: getInitialRank(board.lists?.length || 0) 
+      }));
+      setNewListDialogOpen(false);
     }
   };
 
@@ -91,6 +113,10 @@ const Board = () => {
         setLeaveDialogOpen(false);
         setAnchorEl(null);
         navigate('/board/default');
+      } else {
+        setErrorMessage(result.payload || 'Failed to leave the team.');
+        setErrorDialogOpen(true);
+        setLeaveDialogOpen(false);
       }
     }
   };
@@ -110,21 +136,17 @@ const Board = () => {
 
   const cancelRename = () => setIsRenamingBoard(false);
 
-  // Header subtitle based on load state (CB-004)
-  const headerSubtitle = isLoading
-    ? 'Loading…'
-    : board?.name ?? 'No board';
+  const headerSubtitle = isLoading ? 'Loading…' : board?.name ?? 'No board';
 
   const filteredLists = board?.lists?.map(list => ({
     ...list,
     cards: myTasksFilter 
-      ? list.cards?.filter(c => c.assigneeId === user?.id)
+      ? list.cards?.filter(c => c.assignees?.some(a => a.id === user?.id))
       : list.cards
   }));
 
   return (
     <div className="w-full h-screen flex p-6 gap-6 relative z-0">
-      {/* Background Orbs */}
       <div className="fluid-bg">
         <div className="orb orb-1" />
         <div className="orb orb-2" />
@@ -135,132 +157,146 @@ const Board = () => {
 
       <main className="flex-1 flex flex-col min-w-0 z-10 overflow-hidden items-center">
         <div className="flex-1 flex flex-col gap-8 w-full max-w-[1600px] h-full py-4">
-          {/* Header */}
           <header className="flex justify-between items-center px-6 h-16 shrink-0 z-10">
             <div className="flex items-center gap-3">
               <div className="font-display text-2xl tracking-tight font-extrabold text-[#1d1d1f]">
                 {currentTeam?.name || 'Project Board'}
               </div>
 
-              {/* Board name — editable for admin */}
               {isRenamingBoard ? (
-                <div className="flex items-center gap-1 ml-2">
+                <div className="flex items-center bg-white/50 backdrop-blur-md rounded-xl border border-white/40 px-3 py-1 animate-scale-in">
                   <input
                     ref={renameInputRef}
                     value={boardNameDraft}
                     onChange={(e) => setBoardNameDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') commitRename();
-                      if (e.key === 'Escape') cancelRename();
-                    }}
-                    className="text-sm font-medium text-[#1d1d1f] bg-white/60 border border-[#007AFF]/40 rounded-lg px-3 py-1 outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 transition-all w-40"
+                    onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') cancelRename(); }}
+                    className="bg-transparent border-none outline-none font-semibold text-sm text-[#1d1d1f] w-48"
                   />
-                  <button onClick={commitRename} className="p-1 text-green-600 hover:bg-green-50 rounded-md transition-colors">
-                    <Check size={15} />
-                  </button>
-                  <button onClick={cancelRename} className="p-1 text-gray-400 hover:bg-gray-100 rounded-md transition-colors">
-                    <X size={15} />
-                  </button>
+                  <div className="flex items-center gap-1 ml-2 border-l border-black/10 pl-2">
+                    <button onClick={commitRename} className="text-green-600 hover:bg-green-50 p-1 rounded-lg transition-colors"><Check size={16} /></button>
+                    <button onClick={cancelRename} className="text-gray-400 hover:bg-gray-50 p-1 rounded-lg transition-colors"><X size={16} /></button>
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 ml-2 group">
-                  <span className="text-sm font-medium text-[#1d1d1f]/50">{headerSubtitle}</span>
-                  {isAdmin && board && !isLoading && (
-                    <button
-                      onClick={startRename}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-[#1d1d1f]/40 hover:text-[#007AFF] hover:bg-white/60 rounded-md transition-all"
-                      title="Rename board"
-                    >
-                      <Pencil size={13} />
-                    </button>
-                  )}
+                <div className="flex items-center gap-2 px-4 py-1.5 bg-white/20 backdrop-blur-sm rounded-full border border-white/20 shadow-sm">
+                  <LayoutList size={14} className="text-[#1d1d1f]/40" />
+                  <span className="text-sm font-bold text-[#1d1d1f]/60 uppercase tracking-wider">{headerSubtitle}</span>
                 </div>
               )}
             </div>
 
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-              <button
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Button
+                variant={myTasksFilter ? "contained" : "text"}
                 onClick={() => setMyTasksFilter(!myTasksFilter)}
-                className={`border shadow-sm backdrop-blur-md px-6 py-2.5 rounded-full font-semibold text-sm cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md flex items-center gap-2 ${
-                  myTasksFilter 
-                    ? 'bg-[#1d1d1f] border-[#1d1d1f] text-white' 
-                    : 'bg-white/30 border-white/40 text-[#1d1d1f] hover:bg-white'
-                }`}
-              >
-                <LayoutList size={18} />
-                My Tasks
-              </button>
-
-              <button
-                onClick={() => openMembersModal(0)}
-                className="bg-white/30 border border-white/40 shadow-sm backdrop-blur-md text-[#1d1d1f] px-6 py-2.5 rounded-full font-semibold text-sm cursor-pointer transition-all duration-300 hover:bg-white hover:-translate-y-0.5 hover:shadow-md flex items-center gap-2"
-              >
-                <Users size={18} />
-                View Members
-              </button>
-
-              <button
-                onClick={() => setChatDrawerOpen(true)}
-                className="bg-[#007AFF]/10 border border-[#007AFF]/20 shadow-sm backdrop-blur-md text-[#007AFF] px-6 py-2.5 rounded-full font-semibold text-sm cursor-pointer transition-all duration-300 hover:bg-[#007AFF]/20 hover:-translate-y-0.5 hover:shadow-md flex items-center gap-2"
-              >
-                <MessageCircle size={18} />
-                Team Chat
-              </button>
-
-              {isAdmin && (
-                <button
-                  onClick={() => openMembersModal(1)}
-                  className="bg-[#1d1d1f] text-white px-6 py-2.5 rounded-full font-semibold text-sm cursor-pointer transition-all duration-300 hover:bg-black hover:-translate-y-0.5 hover:shadow-lg flex items-center gap-2"
-                >
-                  <UserPlus size={18} />
-                  Add User
-                </button>
-              )}
-
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 bg-white/30 border border-white/40 text-[#1d1d1f] hover:bg-white hover:-translate-y-0.5 hover:scale-105 shadow-sm ml-2"
-                onClick={handleSettingsClick}
-              >
-                <Settings size={20} />
-              </div>
-
-              <Menu
-                anchorEl={anchorEl}
-                open={openSettings}
-                onClose={handleSettingsClose}
-                PaperProps={{
-                  sx: {
-                    mt: 1.5,
-                    bgcolor: 'rgba(255, 255, 255, 0.4)',
-                    backdropFilter: 'blur(32px)',
-                    WebkitBackdropFilter: 'blur(32px)',
-                    color: '#1d1d1f',
-                    border: '1px solid rgba(255, 255, 255, 0.5)',
-                    boxShadow: '0 24px 48px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)',
-                    borderRadius: 2,
-                    '& .MuiMenuItem-root': { py: 1.5, px: 2, '&:hover': { bgcolor: 'rgba(29, 29, 31, 0.05)' } }
-                  }
+                startIcon={<Users size={18} />}
+                sx={{
+                  borderRadius: '14px',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  px: 2.5,
+                  height: 42,
+                  bgcolor: myTasksFilter ? 'var(--color-primary)' : 'rgba(255,255,255,0.4)',
+                  color: myTasksFilter ? 'white' : '#1d1d1f',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.5)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                  '&:hover': { 
+                    bgcolor: myTasksFilter ? '#0062cc' : 'rgba(255,255,255,0.6)',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 6px 16px rgba(0,0,0,0.08)'
+                  },
+                  '&:active': { transform: 'translateY(0)' }
                 }}
               >
-                {isAdmin && board && (
+                My Tasks
+              </Button>
+
+              <Button
+                variant="text"
+                onClick={() => openMembersModal(0)}
+                startIcon={<Users size={18} />}
+                sx={{
+                  borderRadius: '14px',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  px: 2.5,
+                  height: 42,
+                  bgcolor: 'rgba(255,255,255,0.4)',
+                  color: '#1d1d1f',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.5)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                  '&:hover': { 
+                    bgcolor: 'rgba(255,255,255,0.6)',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 6px 16px rgba(0,0,0,0.08)'
+                  },
+                  '&:active': { transform: 'translateY(0)' }
+                }}
+              >
+                Team
+              </Button>
+
+              <IconButton 
+                onClick={() => setChatDrawerOpen(true)} 
+                sx={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: '14px',
+                  bgcolor: 'rgba(255,255,255,0.4)',
+                  color: '#1d1d1f',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.5)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                  '&:hover': { 
+                    bgcolor: 'rgba(255,255,255,0.6)',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 6px 16px rgba(0,0,0,0.08)'
+                  },
+                  '&:active': { transform: 'translateY(0)' }
+                }}
+              >
+                <MessageCircle size={20} />
+              </IconButton>
+
+              <IconButton 
+                onClick={handleSettingsClick} 
+                sx={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: '14px',
+                  bgcolor: 'rgba(255,255,255,0.4)',
+                  color: '#1d1d1f',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.5)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                  '&:hover': { 
+                    bgcolor: 'rgba(255,255,255,0.6)',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 6px 16px rgba(0,0,0,0.08)'
+                  },
+                  '&:active': { transform: 'translateY(0)' }
+                }}
+              >
+                <Settings size={20} />
+              </IconButton>
+
+              <Menu anchorEl={anchorEl} open={openSettings} onClose={handleSettingsClose} PaperProps={{ sx: { mt: 1, minWidth: 180, borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.5)', boxShadow: '0 8px 32px rgba(0,0,0,0.1)' } }}>
+                {isAdmin && (
                   <MenuItem onClick={startRename}>
-                    <ListItemIcon sx={{ color: '#1d1d1f' }}>
-                      <Pencil size={16} />
-                    </ListItemIcon>
+                    <ListItemIcon><Pencil size={16} /></ListItemIcon>
                     Rename Board
                   </MenuItem>
                 )}
                 <MenuItem onClick={() => { setLeaveDialogOpen(true); handleSettingsClose(); }} sx={{ color: '#ff4444' }}>
-                  <ListItemIcon sx={{ color: '#ff4444' }}>
-                    <LogOut size={18} />
-                  </ListItemIcon>
+                  <ListItemIcon sx={{ color: '#ff4444' }}><LogOut size={18} /></ListItemIcon>
                   Leave Team
                 </MenuItem>
               </Menu>
             </Stack>
           </header>
 
-          {/* Kanban Area */}
           <div className="flex-1 overflow-x-auto kanban-scroll pb-8">
             {isLoading ? (
               <Box sx={{ display: 'flex', gap: 3, height: '100%', width: '100%', justifyContent: 'center', py: 4 }}>
@@ -269,108 +305,144 @@ const Board = () => {
                 <Skeleton variant="rounded" width={320} height={400} sx={{ bgcolor: 'var(--glass-bg)', borderRadius: 3 }} />
               </Box>
             ) : board ? (
-              <div className="flex min-w-full items-start">
+              <div className="flex min-w-full items-start pb-4">
                 {(!board.lists || board.lists.length === 0) ? (
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', width: '100%', gap: 3 }}>
                     <Typography variant="h5" sx={{ color: 'rgba(29,29,31,0.5)', fontWeight: 600 }}>
                       {isAdmin ? 'Create your first list' : 'No lists yet'}
                     </Typography>
                     {isAdmin && (
-                      <Button
-                        onClick={onAddList}
-                        variant="contained"
-                        startIcon={<Plus size={20} />}
-                        sx={{
-                          bgcolor: 'var(--color-primary)', height: 48, px: 4, borderRadius: 2,
-                          textTransform: 'none', fontSize: '1rem',
-                          '&:hover': { bgcolor: '#0062cc' },
-                          '&:active': { transform: 'scale(0.98)' }
-                        }}
-                      >
+                      <Button onClick={onAddList} variant="contained" startIcon={<Plus size={20} />} sx={{ bgcolor: 'var(--color-primary)', height: 48, px: 4, borderRadius: 2, textTransform: 'none', fontSize: '1rem', '&:hover': { bgcolor: '#0062cc' } }}>
                         Add List
                       </Button>
                     )}
                   </Box>
                 ) : (
-                  <div className="flex gap-6 items-start px-8 py-4 w-max">
-                    <KanbanBoard initialData={filteredLists} isMyTasksFilter={myTasksFilter} />
-                    {isAdmin && !myTasksFilter && (
-                      <Button
-                        onClick={onAddList}
-                        variant="outlined"
-                        startIcon={<Plus size={20} />}
-                        sx={{
-                          minWidth: 280,
-                          height: 56,
-                          borderRadius: 2,
-                          border: '1px dashed var(--glass-border)',
-                          color: 'rgba(255,255,255,0.7)',
-                          background: 'var(--glass-bg)',
-                          backdropFilter: 'blur(var(--glass-blur))',
-                          textTransform: 'none',
-                          fontSize: '1rem',
-                          flexShrink: 0,
-                          '&:hover': { background: 'rgba(255,255,255,0.1)', borderColor: 'var(--color-secondary)' },
-                          '&:active': { transform: 'scale(0.98)' }
-                        }}
-                      >
-                        Add List
-                      </Button>
-                    )}
-                  </div>
+                  <KanbanBoard 
+                    initialData={filteredLists} 
+                    isAdmin={isAdmin} 
+                    onAddList={onAddList} 
+                    myTasksFilter={myTasksFilter} 
+                  />
                 )}
               </div>
             ) : (
-              /* No board exists — should not happen with CB-001, but defensive fallback */
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
-                <Typography sx={{ color: 'rgba(29,29,31,0.4)', fontWeight: 500 }}>
-                  No board available for this team.
-                </Typography>
+                <Typography sx={{ color: 'rgba(29,29,31,0.4)', fontWeight: 500 }}>No board available.</Typography>
               </Box>
             )}
           </div>
         </div>
       </main>
 
-      <TeamMembersModal
-        open={membersModalOpen}
-        onClose={() => setMembersModalOpen(false)}
-        teamId={teamId}
-        initialTab={initialModalTab}
-      />
-
-      <ChatDrawer
-        open={chatDrawerOpen}
-        onClose={() => setChatDrawerOpen(false)}
-        teamId={teamId}
-      />
-
-      {/* Leave Team Dialog */}
-      <Dialog
-        open={leaveDialogOpen}
-        onClose={() => setLeaveDialogOpen(false)}
-        BackdropProps={{ sx: { backgroundColor: 'rgba(0,0,0,0.1)', backdropFilter: 'blur(4px)' } }}
+      {/* New List Dialog */}
+      <Dialog 
+        open={newListDialogOpen} 
+        onClose={() => setNewListDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        BackdropProps={{
+          sx: {
+            backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            backdropFilter: 'blur(4px)'
+          }
+        }}
         PaperProps={{
           sx: {
-            background: 'rgba(255,255,255,0.4)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
-            border: '1px solid rgba(255,255,255,0.5)', borderRadius: 3, color: '#1d1d1f',
-            boxShadow: '0 24px 48px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)', p: 2
+            background: 'rgba(255, 255, 255, 0.4)',
+            backdropFilter: 'blur(32px)',
+            WebkitBackdropFilter: 'blur(32px)',
+            border: '1px solid rgba(255, 255, 255, 0.5)',
+            borderRadius: 4,
+            color: '#1d1d1f',
+            boxShadow: '0 24px 48px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)',
+            p: 1
           }
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700 }}>Leave Team?</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ color: 'rgba(29,29,31,0.7)' }}>
-            Are you sure you want to leave this team? You will lose access to all boards and data associated with it.
+        <DialogTitle sx={{ fontWeight: 800, fontSize: '1.25rem', px: 3, pt: 3, pb: 1 }}>
+          Add New List
+        </DialogTitle>
+        <DialogContent sx={{ px: 3 }}>
+          <DialogContentText sx={{ mb: 3, fontSize: '0.9rem', color: 'rgba(29, 29, 31, 0.6)', fontWeight: 500 }}>
+            Give your new column a name to organize your tasks.
           </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            placeholder="e.g., Marketing, QA, Research"
+            fullWidth
+            variant="outlined"
+            value={newListName}
+            onChange={(e) => setNewListName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleCreateList()}
+            sx={{ 
+              input: { color: '#1d1d1f', fontWeight: 600 }, 
+              '& .MuiOutlinedInput-root': { 
+                bgcolor: 'rgba(0,0,0,0.03)',
+                borderRadius: 3,
+                height: 52,
+                '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' }, 
+                '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.15)' },
+                '&.Mui-focused fieldset': { 
+                  borderColor: 'var(--color-primary)',
+                  borderWidth: '1.5px'
+                }
+              } 
+            }}
+          />
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setLeaveDialogOpen(false)} sx={{ color: 'rgba(29,29,31,0.6)' }}>Cancel</Button>
-          <Button onClick={handleLeaveTeam} variant="contained" color="error" sx={{ fontWeight: 600, textTransform: 'none', borderRadius: 2 }}>
-            Leave Team
+        <DialogActions sx={{ p: 3, gap: 1.5 }}>
+          <Button 
+            onClick={() => setNewListDialogOpen(false)} 
+            sx={{ 
+              textTransform: 'none', 
+              fontWeight: 700, 
+              color: 'rgba(29, 29, 31, 0.4)',
+              fontSize: '0.9rem',
+              '&:hover': { color: '#1d1d1f', bgcolor: 'transparent' }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleCreateList} 
+            variant="contained" 
+            disabled={!newListName.trim()} 
+            sx={{ 
+              textTransform: 'none', 
+              fontWeight: 700, 
+              borderRadius: '14px', 
+              px: 4,
+              height: 44,
+              bgcolor: 'var(--color-primary)',
+              boxShadow: '0 4px 12px rgba(0,122,255,0.25)',
+              '&:hover': { bgcolor: '#0062cc' }
+            }}
+          >
+            Create List
           </Button>
         </DialogActions>
       </Dialog>
+
+      <TeamMembersModal open={membersModalOpen} onClose={() => setMembersModalOpen(false)} teamId={teamId} initialTab={initialModalTab} />
+      <ChatDrawer open={chatDrawerOpen} onClose={() => setChatDrawerOpen(false)} teamId={teamId} />
+
+      <ConfirmDialog 
+        open={leaveDialogOpen}
+        onClose={() => setLeaveDialogOpen(false)}
+        onConfirm={handleLeaveTeam}
+        title="Leave Team?"
+        message="Are you sure you want to leave this team? You will lose access to all boards and tasks unless invited back."
+        confirmText="Leave Team"
+        type="danger"
+      />
+
+      <ErrorDialog 
+        open={errorDialogOpen}
+        onClose={() => setErrorDialogOpen(false)}
+        message={errorMessage}
+      />
     </div>
   );
 };

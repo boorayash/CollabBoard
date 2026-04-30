@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Drawer, IconButton, Tooltip, CircularProgress } from '@mui/material';
-import { X, Send, Bookmark, BookmarkCheck } from 'lucide-react';
+import { X, Send, Bookmark, BookmarkCheck, MessageCircle } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMessages, toggleSaveMessage, receiveMessage, resetChat } from '../store/slices/chatSlice';
 import { getSocket, joinTeamChat, leaveTeamChat, sendChatMessage } from '../socket/socketClient';
@@ -73,77 +73,176 @@ const ChatDrawer = ({ open, onClose, teamId }) => {
         }
       }}
     >
-      <div className="flex items-center justify-between px-6 py-4 border-b border-[#1d1d1f]/10 shrink-0 bg-white/40">
-        <h2 className="font-display font-bold text-lg text-[#1d1d1f]">Team Chat</h2>
-        <IconButton onClick={onClose} size="small" sx={{ color: '#1d1d1f' }}>
-          <X size={20} />
+      {/* Header */}
+      <div className="flex items-center justify-between px-7 h-[80px] border-b border-white/20 shrink-0 bg-white/10 backdrop-blur-2xl relative overflow-hidden">
+        {/* Subtle decorative orb in header */}
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#007AFF]/10 blur-3xl rounded-full" />
+        
+        <div className="flex flex-col relative z-10">
+          <h2 className="font-display font-extrabold text-2xl text-[#1d1d1f] tracking-tight">Team Chat</h2>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#34C759] animate-pulse shadow-[0_0_8px_#34C759]" />
+            <span className="text-[10px] uppercase tracking-[0.15em] font-black text-[#1d1d1f]/40">Active Session</span>
+          </div>
+        </div>
+        
+        <IconButton 
+          onClick={onClose} 
+          size="small" 
+          sx={{ 
+            color: '#1d1d1f', 
+            bgcolor: 'rgba(255,255,255,0.4)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.5)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.7)', transform: 'rotate(90deg)' },
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}
+        >
+          <X size={18} />
         </IconButton>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 kanban-scroll">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto px-7 py-8 flex flex-col gap-6 kanban-scroll relative">
         {isLoading ? (
-          <div className="flex items-center justify-center h-full">
-            <CircularProgress size={30} sx={{ color: '#007AFF' }} />
+          <div className="flex flex-col items-center justify-center h-full gap-4">
+            <CircularProgress size={28} sx={{ color: 'var(--color-primary)' }} thickness={5} />
+            <span className="text-[11px] font-bold text-[#1d1d1f]/30 uppercase tracking-widest">Syncing Messages...</span>
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full opacity-50 text-sm font-medium">
-            No messages yet. Start the conversation!
+          <div className="flex flex-col items-center justify-center h-full opacity-40 text-center px-12 gap-5">
+            <div className="w-16 h-16 rounded-[24px] bg-white/40 backdrop-blur-md border border-white/50 flex items-center justify-center shadow-sm">
+              <MessageCircle size={32} className="text-[#007AFF]/60" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-extrabold text-[#1d1d1f]">No messages yet</p>
+              <p className="text-xs font-medium leading-relaxed">Start a conversation with your team to coordinate tasks in real-time.</p>
+            </div>
           </div>
         ) : (
-          messages.map((msg) => {
-            const isMine = msg.userId === user?.id;
-            const msgTime = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          <div className="flex flex-col gap-6">
+            {/* Date Divider (Placeholder for now, could be dynamic) */}
+            <div className="flex items-center gap-4 my-2">
+              <div className="flex-1 h-[1px] bg-black/5" />
+              <span className="text-[10px] font-black text-[#1d1d1f]/20 uppercase tracking-[0.2em]">Today</span>
+              <div className="flex-1 h-[1px] bg-black/5" />
+            </div>
 
-            return (
-              <div key={msg.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                {!isMine && <span className="text-[11px] font-bold text-[#1d1d1f]/60 mb-1 ml-1">{msg.user?.name || 'User'}</span>}
-                <div className={`relative max-w-[85%] group flex items-end gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div 
-                    className={`px-4 py-2.5 rounded-2xl text-[14px] shadow-sm ${
-                      isMine 
-                        ? 'bg-[#007AFF] text-white rounded-tr-sm' 
-                        : 'bg-white text-[#1d1d1f] rounded-tl-sm border border-[#1d1d1f]/5'
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                    <div className={`flex items-center justify-end gap-1 mt-1 ${isMine ? 'text-white/70' : 'text-[#1d1d1f]/40'} text-[10px]`}>
-                      <span>{msgTime}</span>
-                      {msg.isSaved && <BookmarkCheck size={10} className={isMine ? 'text-yellow-300' : 'text-amber-500'} />}
+            {messages.map((msg, idx) => {
+              const isMine = msg.userId === user?.id;
+              const msgTime = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const prevMsg = idx > 0 ? messages[idx - 1] : null;
+              const isFirstInGroup = !prevMsg || prevMsg.userId !== msg.userId;
+
+              return (
+                <div 
+                  key={msg.id} 
+                  className={`flex gap-3.5 ${isMine ? 'flex-row-reverse' : 'flex-row'} items-end animate-message-in`}
+                  style={{ animationDelay: isMine ? '0s' : `${idx * 0.02}s` }}
+                >
+                  {!isMine && (
+                    <div className="relative shrink-0">
+                      {isFirstInGroup ? (
+                        <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-white to-[#f0f4f8] backdrop-blur-md border border-white/80 flex items-center justify-center text-[12px] font-black text-[#007AFF] shadow-sm">
+                          {msg.user?.name?.charAt(0).toUpperCase() || '?'}
+                        </div>
+                      ) : (
+                        <div className="w-9 shrink-0" />
+                      )}
+                    </div>
+                  )}
+
+                  <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} max-w-[82%]`}>
+                    {isFirstInGroup && !isMine && (
+                      <span className="text-[11px] font-black text-[#1d1d1f]/40 mb-1.5 ml-1 tracking-tight">
+                        {msg.user?.name || 'Team Member'}
+                      </span>
+                    )}
+                    
+                    <div className={`group relative flex items-center gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
+                      <div 
+                        className={`px-4.5 py-3 rounded-[20px] text-[14.5px] leading-relaxed transition-all duration-300 ${
+                          isMine 
+                            ? 'bg-gradient-to-br from-[#007AFF] to-[#0062ff] text-white rounded-tr-[4px] shadow-lg shadow-[#007AFF]/15' 
+                            : 'bg-white/90 backdrop-blur-md text-[#1d1d1f] rounded-tl-[4px] border border-white/60 shadow-sm'
+                        } hover:scale-[1.01]`}
+                      >
+                        <p className="whitespace-pre-wrap break-words font-medium">{msg.content}</p>
+                        <div className={`flex items-center justify-end gap-1.5 mt-2 ${isMine ? 'text-white/60' : 'text-[#1d1d1f]/30'} text-[10px] font-black`}>
+                          <span>{msgTime}</span>
+                          {msg.isSaved && <BookmarkCheck size={11} className={isMine ? 'text-yellow-300' : 'text-amber-500'} />}
+                        </div>
+                      </div>
+                      
+                      <Tooltip title={msg.isSaved ? "Saved" : "Save Message"}>
+                        <IconButton 
+                          onClick={() => handleToggleSave(msg.id)}
+                          size="small"
+                          sx={{ 
+                            opacity: msg.isSaved ? 1 : 0, 
+                            visibility: msg.isSaved ? 'visible' : 'hidden',
+                            '.group:hover &': { opacity: 1, visibility: 'visible' },
+                            transition: 'all 0.2s',
+                            color: msg.isSaved ? '#F59E0B' : 'rgba(0,0,0,0.2)',
+                            bgcolor: 'rgba(0,0,0,0.03)',
+                            '&:hover': { bgcolor: 'rgba(0,0,0,0.08)', color: '#F59E0B' }
+                          }}
+                        >
+                          {msg.isSaved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+                        </IconButton>
+                      </Tooltip>
                     </div>
                   </div>
-                  
-                  <Tooltip title={msg.isSaved ? "Saved permanently" : "Save to prevent auto-delete"}>
-                    <button 
-                      onClick={() => handleToggleSave(msg.id)}
-                      className={`opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-black/5 ${msg.isSaved ? 'text-amber-500 opacity-100' : 'text-gray-400'}`}
-                    >
-                      {msg.isSaved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
-                    </button>
-                  </Tooltip>
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4 border-t border-[#1d1d1f]/10 bg-white/40 shrink-0">
-        <form onSubmit={handleSend} className="flex gap-2">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 bg-white border border-[#1d1d1f]/10 rounded-full px-4 py-2.5 text-[14px] outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 transition-all shadow-sm"
-          />
-          <button 
-            type="submit"
-            disabled={!newMessage.trim()}
-            className="w-[42px] h-[42px] shrink-0 rounded-full bg-[#007AFF] text-white flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:bg-[#0062cc] shadow-md"
-          >
-            <Send size={18} className="ml-1" />
-          </button>
+      {/* Input Area */}
+      <div className="p-6 border-t border-white/20 bg-white/20 backdrop-blur-2xl shrink-0">
+        <form onSubmit={handleSend} className="flex flex-col gap-4">
+          <div className="flex gap-3 bg-white/60 p-2 rounded-[24px] border border-white/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] focus-within:shadow-[inset_0_2px_8px_rgba(0,0,0,0.03),0_0_0_2px_rgba(0,122,255,0.1)] transition-all">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Message team..."
+              className="flex-1 bg-transparent px-4 py-2 text-[15px] font-semibold outline-none text-[#1d1d1f] placeholder-[#1d1d1f]/25"
+            />
+            <IconButton 
+              type="submit"
+              disabled={!newMessage.trim()}
+              sx={{
+                width: 44,
+                height: 44,
+                bgcolor: '#007AFF',
+                color: 'white',
+                borderRadius: '18px',
+                transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                boxShadow: '0 4px 15px rgba(0,122,255,0.3)',
+                '&:hover': { bgcolor: '#0062cc', transform: 'scale(1.08) rotate(-5deg)' },
+                '&:active': { transform: 'scale(0.95)' },
+                '&:disabled': { opacity: 0.3, bgcolor: '#007AFF', boxShadow: 'none' }
+              }}
+            >
+              <Send size={18} />
+            </IconButton>
+          </div>
+          
+          <div className="flex items-center justify-center gap-2">
+            <div className="h-[1px] flex-1 bg-black/5" />
+            <div className="px-3 py-1.5 rounded-full bg-black/5 border border-black/5 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <p className="text-[10px] font-black text-[#1d1d1f]/40 uppercase tracking-[0.12em]">
+                Messages disappear after 24 hours unless saved
+              </p>
+            </div>
+            <div className="h-[1px] flex-1 bg-black/5" />
+          </div>
         </form>
       </div>
     </Drawer>
