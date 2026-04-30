@@ -17,6 +17,8 @@ router.post('/:teamId/invite', authorize('ADMIN'), teamController.inviteMember);
 router.patch('/:teamId/members/:userId', authorize('ADMIN'), teamController.updateMemberRole);
 router.delete('/:teamId/members/:userId', authorize('ADMIN'), teamController.removeMember);
 router.delete('/:teamId/leave', teamController.leaveTeam);
+router.delete('/:teamId', authorize('ADMIN'), teamController.deleteTeam);
+router.delete('/:teamId/invitations/:userId', authorize('ADMIN'), teamController.revokeInvitation);
 router.post('/:teamId/respond', teamController.respondToInvitation);
 
 module.exports = router;

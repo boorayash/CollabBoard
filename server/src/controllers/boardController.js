@@ -54,7 +54,7 @@ exports.getBoards = async (req, res) => {
             cards: { 
               orderBy: { rank: 'asc' },
               include: {
-                assignee: { select: { id: true, name: true } }
+                assignees: { select: { id: true, name: true } }
               }
             } 
           },
@@ -109,11 +109,14 @@ exports.getBoards = async (req, res) => {
 exports.updateBoard = async (req, res) => {
   try {
     const { boardId } = req.params;
-    const { name } = req.body;
+    const { name, categories } = req.body;
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (categories !== undefined) updateData.categories = categories;
 
     const board = await prisma.board.update({
       where: { id: boardId },
-      data: { name },
+      data: updateData,
     });
 
     res.status(200).json({

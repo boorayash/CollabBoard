@@ -13,7 +13,7 @@ model User {
   password  String
   name      String?
   teams     TeamMember[]
-  cards     Card[]   @relation("AssignedTo")
+  assignedCards Card[]   @relation("CardAssignees")
   comments  Comment[]
   messages  TeamMessage[]
   createdAt DateTime @default(now())
@@ -54,6 +54,7 @@ model Board {
   teamId    String
   team      Team     @relation(fields: [teamId], references: [id])
   lists     List[]
+  categories String[] @default(["Design", "Development", "Bug", "Feature"])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -76,11 +77,11 @@ model Card {
   rank        String   // Fractional Indexing
   listId      String
   list        List     @relation(fields: [listId], references: [id])
-  assigneeId  String?
-  assignee    User?    @relation("AssignedTo", fields: [assigneeId], references: [id])
+  assignees   User[]   @relation("CardAssignees")
   comments    Comment[]
   dueDate     DateTime?
   priority    String   @default("low") // low, medium, high
+  category    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

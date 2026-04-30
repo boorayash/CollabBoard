@@ -159,6 +159,32 @@ exports.respondToInvitation = async (req, res) => {
   }
 };
 
+exports.revokeInvitation = async (req, res) => {
+  try {
+    const { teamId, userId } = req.params;
+
+    const invitation = await prisma.teamMember.findUnique({
+      where: { userId_teamId: { userId, teamId } }
+    });
+
+    if (!invitation) {
+      return res.status(404).json({ message: 'Invitation not found' });
+    }
+
+    if (invitation.status !== 'PENDING') {
+      return res.status(400).json({ message: 'Cannot revoke an accepted invitation. Use remove member instead.' });
+    }
+
+    await prisma.teamMember.delete({
+      where: { userId_teamId: { userId, teamId } }
+    });
+
+    res.status(200).json({ status: 'success', message: 'Invitation revoked' });
+  } catch (err) {
+    res.status(500).json({ message: 'Error revoking invitation', error: err.message });
+  }
+};
+
 exports.getInvitations = async (req, res) => {
   try {
     const invitations = await prisma.teamMember.findMany({
@@ -287,5 +313,53 @@ exports.leaveTeam = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: 'Error leaving team', error: err.message });
+  }
+};
+
+exports.deleteTeam = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Get all board IDs for the team
+      const boards = await tx.board.findMany({
+        where: { teamId },
+        select: { id: true },
+      });
+      const boardIds = boards.map((b) => b.id);
+
+      // 2. Get all list IDs for those boards
+      const lists = await tx.list.findMany({
+        where: { boardId: { in: boardIds } },
+        select: { id: true },
+      });
+      const listIds = lists.map((l) => l.id);
+
+      // 3. Get all card IDs for those lists
+      const cards = await tx.card.findMany({
+        where: { listId: { in: listIds } },
+        select: { id: true },
+      });
+      const cardIds = cards.map((c) => c.id);
+
+      // 4. Delete related entities in reverse dependency order
+      await tx.comment.deleteMany({ where: { cardId: { in: cardIds } } });
+      await tx.card.deleteMany({ where: { listId: { in: listIds } } });
+      await tx.list.deleteMany({ where: { boardId: { in: boardIds } } });
+      await tx.board.deleteMany({ where: { teamId } });
+      await tx.teamMessage.deleteMany({ where: { teamId } });
+      await tx.teamMember.deleteMany({ where: { teamId } });
+
+      // 5. Delete the team itself
+      await tx.team.delete({ where: { id: teamId } });
+    });
+
+    res.status(204).json({
+      status: 'success',
+      data: null,
+    });
+  } catch (err) {
+    console.error('[teamController.deleteTeam] Error:', err);
+    res.status(500).json({ message: 'Error deleting team', error: err.message });
   }
 };

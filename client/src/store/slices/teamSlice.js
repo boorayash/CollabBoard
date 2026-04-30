@@ -89,6 +89,31 @@ export const leaveTeam = createAsyncThunk('team/leaveTeam', async (teamId, thunk
   }
 });
 
+export const deleteTeam = createAsyncThunk('team/deleteTeam', async (teamId, thunkAPI) => {
+  try {
+    await axios.delete(`${API_URL}/teams/${teamId}`, {
+      headers: getAuthHeader(),
+    });
+    return teamId;
+  } catch (error) {
+    return thunkAPI.rejectWithValue(error.response?.data?.message || 'Error deleting team');
+  }
+});
+
+export const revokeInvitation = createAsyncThunk(
+  'team/revokeInvitation',
+  async ({ teamId, userId }, { rejectWithValue }) => {
+    try {
+      const response = await axios.delete(`${API_URL}/teams/${teamId}/invitations/${userId}`, {
+        headers: getAuthHeader(),
+      });
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Error revoking invitation');
+    }
+  }
+);
+
 export const respondToInvite = createAsyncThunk('team/respondToInvite', async ({ teamId, action }, thunkAPI) => {
   try {
     const response = await axios.post(`${API_URL}/teams/${teamId}/respond`, { action }, {
@@ -237,6 +262,13 @@ export const teamSlice = createSlice({
           state.currentTeam = null;
         }
       })
+      .addCase(deleteTeam.fulfilled, (state, action) => {
+        const teamId = action.payload;
+        state.myTeams = state.myTeams.filter(team => team.id !== teamId);
+        if (state.currentTeam?.id === teamId) {
+          state.currentTeam = null;
+        }
+      })
       .addCase(removeMember.fulfilled, (state, action) => {
         state.teamMembers = state.teamMembers.filter(m => m.userId !== action.payload);
       })
@@ -250,7 +282,11 @@ export const teamSlice = createSlice({
         }
       })
       // Bug 2 fix: clear all team data when user logs out
-      .addCase(logout, () => initialState);
+      .addCase(logout, () => initialState)
+      .addCase(revokeInvitation.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      });
   },
 });
 

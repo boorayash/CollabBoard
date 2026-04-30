@@ -3,7 +3,7 @@ const { getIO } = require('../socket/index');
 
 exports.createCard = async (req, res) => {
   try {
-    const { title, description, listId, rank, priority, assigneeId } = req.body;
+    const { title, description, listId, rank, priority, assigneeIds, category } = req.body;
 
     // 1) Verify user belongs to list's board team
     const list = await prisma.list.findUnique({
@@ -29,11 +29,10 @@ exports.createCard = async (req, res) => {
       return res.status(403).json({ message: 'You do not have access to this board' });
     }
 
-    if (member.role !== 'ADMIN') {
-      return res.status(403).json({ message: 'Only admins can create tasks' });
-    }
+    // Default to creator if no assignees provided
+    const finalAssigneeIds = (assigneeIds && assigneeIds.length > 0) ? assigneeIds : [req.user.id];
 
-    // 2) Create card
+    // 2) Create card with multiple assignees
     const card = await prisma.card.create({
       data: {
         title,
@@ -41,10 +40,13 @@ exports.createCard = async (req, res) => {
         listId,
         rank,
         priority: priority || 'LOW',
-        assigneeId: assigneeId || null,
+        category,
+        assignees: {
+          connect: finalAssigneeIds.map(id => ({ id }))
+        }
       },
       include: {
-        assignee: { select: { id: true, name: true } }
+        assignees: { select: { id: true, name: true } }
       }
     });
 
@@ -53,7 +55,7 @@ exports.createCard = async (req, res) => {
       data: { card },
     });
 
-    // 3) Broadcast to board room (using x-socket-id to avoid self-echo)
+    // 3) Broadcast
     const io = getIO();
     const socketId = req.headers['x-socket-id'];
     const room = `board:${list.board.id}`;
@@ -71,11 +73,12 @@ exports.createCard = async (req, res) => {
 exports.updateCard = async (req, res) => {
   try {
     const { cardId } = req.params;
-    const { title, description, priority, listId, rank, assigneeId } = req.body;
+    const { title, description, priority, listId, rank, assigneeIds, category } = req.body;
 
     const currentCard = await prisma.card.findUnique({
       where: { id: cardId },
       include: {
+        assignees: true,
         list: {
           include: {
             board: {
@@ -99,12 +102,14 @@ exports.updateCard = async (req, res) => {
       return res.status(403).json({ message: 'You do not have access to this board' });
     }
 
-    // Check permissions for moving (changing listId or rank)
+    // Move permission: admin or any of the assignees
     const isMoving = (listId !== undefined && listId !== currentCard.listId) || 
                      (rank !== undefined && rank !== currentCard.rank);
                      
-    if (isMoving && member.role !== 'ADMIN' && currentCard.assigneeId !== req.user.id) {
-      return res.status(403).json({ message: 'Only admins or the assigned user can move this task' });
+    const isAssignee = currentCard.assignees.some(a => a.id === req.user.id);
+
+    if (isMoving && member.role !== 'ADMIN' && !isAssignee) {
+      return res.status(403).json({ message: 'Only admins or assigned users can move this task' });
     }
 
     const dataToUpdate = {
@@ -113,17 +118,20 @@ exports.updateCard = async (req, res) => {
       priority,
       listId,
       rank,
+      category,
     };
 
-    if (assigneeId !== undefined) {
-      dataToUpdate.assigneeId = assigneeId;
+    if (assigneeIds !== undefined) {
+      dataToUpdate.assignees = {
+        set: assigneeIds.map(id => ({ id }))
+      };
     }
 
     const card = await prisma.card.update({
       where: { id: cardId },
       data: dataToUpdate,
       include: {
-        assignee: { select: { id: true, name: true } }
+        assignees: { select: { id: true, name: true } }
       }
     });
 
@@ -132,7 +140,6 @@ exports.updateCard = async (req, res) => {
       data: { card },
     });
 
-    // Broadcast card:updated (covers both title edits AND moves)
     const updatedList = await prisma.list.findUnique({
       where: { id: card.listId },
       include: { board: true },
@@ -155,7 +162,6 @@ exports.deleteCard = async (req, res) => {
   try {
     const { cardId } = req.params;
 
-    // Look up boardId BEFORE deleting
     const cardToDelete = await prisma.card.findUnique({
       where: { id: cardId },
       include: { list: { include: { board: true } } },
@@ -170,7 +176,6 @@ exports.deleteCard = async (req, res) => {
       data: null,
     });
 
-    // Broadcast card:deleted (AFTER response)
     if (cardToDelete) {
       const io = getIO();
       const socketId = req.headers['x-socket-id'];
