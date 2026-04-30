@@ -2,14 +2,17 @@
 // Socket events update Redux → triggers re-render chain → KanbanBoard syncs via useEffect
 import { useState, useEffect } from 'react';
 import { DndContext, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { arrayMove, sortableKeyboardCoordinates, horizontalListSortingStrategy } from '@dnd-kit/sortable';
+import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Box } from '@mui/material';
-import { useDispatch } from 'react-redux';
-import { updateCardPosition, moveCardOptimistic } from '../store/slices/boardSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { updateCardPosition } from '../store/slices/boardSlice';
 import ListColumn from './ListColumn';
 import { generateNewRank } from '../utils/ranks';
 
-const KanbanBoard = ({ initialData, isMyTasksFilter }) => {
+import { Plus } from 'lucide-react';
+import { Button } from '@mui/material';
+
+const KanbanBoard = ({ initialData, isAdmin, onAddList, myTasksFilter }) => {
   const [lists, setLists] = useState(initialData);
   const [activeColumnId, setActiveColumnId] = useState(null);
 
@@ -17,7 +20,17 @@ const KanbanBoard = ({ initialData, isMyTasksFilter }) => {
     setLists(initialData);
   }, [initialData]);
 
+  // Removed stack effect logic to prioritize clarity and stability
+  useEffect(() => {
+    // No-op - effect removed per user request
+  }, []);
+
   const dispatch = useDispatch();
+
+  // DND-PERM-01/02: derive permissions from Redux
+  const { user } = useSelector((state) => state.auth);
+  const { role } = useSelector((state) => state.board);
+  const currentUserId = user?.id;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -30,6 +43,16 @@ const KanbanBoard = ({ initialData, isMyTasksFilter }) => {
     if (lists.find((l) => l.id === id)) return id;
     const list = lists.find((l) => l.cards.find((c) => c.id === id));
     return list ? list.id : null;
+  };
+
+  // DND-PERM-01: check if current user is allowed to drag a given card
+  const canDragCard = (cardId) => {
+    if (isAdmin) return true;
+    for (const list of lists) {
+      const card = list.cards?.find(c => c.id === cardId);
+      if (card) return card.assigneeId === currentUserId;
+    }
+    return false;
   };
 
   const handleDragOver = ({ active, over }) => {
@@ -75,10 +98,6 @@ const KanbanBoard = ({ initialData, isMyTasksFilter }) => {
     }
   };
 
-  const handleDragStart = (event) => {
-    // Optionally track active drag state
-  };
-
   const handleDragEnd = (event) => {
     const { active, over } = event;
     const overId = over?.id;
@@ -97,67 +116,62 @@ const KanbanBoard = ({ initialData, isMyTasksFilter }) => {
 
     // If dragging to an empty list, overId is the list ID
     if (overIndex === -1 && overId === overContainer) {
-      overIndex = items.length; // Place at the end
+      overIndex = items.length;
     }
-
-    // Determine if it was an intra-list reorder that actually changed positions
-    // OR if it was already moved to a new list by handleDragOver
-    // Note: handleDragOver modifies local state when moving across lists, 
-    // so activeContainer === overContainer at this stage for cross-list moves too.
-    // However, we MUST dispatch the update to the backend. We can ALWAYS dispatch
-    // if a drag event completed successfully since it implies intentional displacement.
 
     if (activeIndex !== overIndex || overIndex === -1) {
       let finalCards = items;
-      
-      // If it's a re-order in the same physical local state array
+
       if (activeIndex !== overIndex && overId !== overContainer) {
-         setLists((prev) => {
-           const prevList = prev.find((l) => l.id === activeContainer);
-           finalCards = arrayMove(prevList.cards, activeIndex, overIndex);
-           return prev.map((l) => (l.id === activeContainer ? { ...l, cards: finalCards } : l));
-         });
+        setLists((prev) => {
+          const prevList = prev.find((l) => l.id === activeContainer);
+          finalCards = arrayMove(prevList.cards, activeIndex, overIndex);
+          return prev.map((l) => (l.id === activeContainer ? { ...l, cards: finalCards } : l));
+        });
       }
 
-      // Calculate rank based on the PREDICTED final array state
-      // (because setLists is async, we use finalCards or items locally)
       const targetCards = finalCards || items;
-      
-      // We must calculate the correct target index. 
-      // If arrayMove was called, the card is now at `overIndex`.
-      // If arrayMove wasn't called (it was already moved by dragOver), the card is at `activeIndex`.
       const targetIndex = (activeIndex !== overIndex && overId !== overContainer) ? overIndex : activeIndex;
 
       const prevCard = targetCards[targetIndex - 1];
       const nextCard = targetCards[targetIndex + 1];
       const newRank = generateNewRank(prevCard?.rank, nextCard?.rank);
 
-      dispatch(updateCardPosition({ 
-        cardId: active.id, 
-        data: { listId: overContainer, rank: newRank } 
+      dispatch(updateCardPosition({
+        cardId: active.id,
+        data: { listId: overContainer, rank: newRank }
       }));
     } else {
-      // It was an across-list drag that happened to land at activeIndex === overIndex!
-      // DragOver moved it, so it's ALREADY in the new list in local state.
-      // But we skipped the arrayMove. We STILL must save the new listId to the DB!
       const prevCard = items[activeIndex - 1];
       const nextCard = items[activeIndex + 1];
       const newRank = generateNewRank(prevCard?.rank, nextCard?.rank);
 
-      dispatch(updateCardPosition({ 
-        cardId: active.id, 
-        data: { listId: overContainer, rank: newRank } 
+      dispatch(updateCardPosition({
+        cardId: active.id,
+        data: { listId: overContainer, rank: newRank }
       }));
     }
   };
 
   return (
-    <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start', height: '100%', width: 'max-content' }}>
+    <Box 
+      className="kanban-scroll"
+      sx={{ 
+        display: 'flex', 
+        gap: 3, 
+        alignItems: 'flex-start', 
+        height: '100%',
+        width: '100%',
+        overflowX: 'auto',
+        pb: 4
+      }}
+    >
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        cancelDrop={({ active }) => !canDragCard(active.id)}
       >
         {lists.map((list) => (
           <ListColumn
@@ -165,10 +179,45 @@ const KanbanBoard = ({ initialData, isMyTasksFilter }) => {
             list={list}
             activeColumnId={activeColumnId}
             setActiveColumnId={setActiveColumnId}
-            isMyTasksFilter={isMyTasksFilter}
+            isAdmin={isAdmin}
+            currentUserId={currentUserId}
           />
         ))}
       </DndContext>
+      
+      {isAdmin && !myTasksFilter && (
+        <Box sx={{ flexShrink: 0 }}>
+          <Button 
+            onClick={onAddList} 
+            variant="outlined" 
+            startIcon={<Plus size={20} />} 
+            sx={{ 
+              minWidth: 280, 
+              height: 64, 
+              borderRadius: 3, 
+              border: '2px dashed rgba(0,0,0,0.1)', 
+              color: 'rgba(29,29,31,0.5)', 
+              background: 'rgba(255,255,255,0.45)', 
+              backdropFilter: 'blur(16px)', 
+              textTransform: 'none', 
+              fontSize: '1.05rem', 
+              fontWeight: 700,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              '&:hover': { 
+                background: 'rgba(255,255,255,0.6)', 
+                borderColor: 'var(--color-primary)',
+                color: 'var(--color-primary)',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.1)'
+              },
+              '&:active': { transform: 'translateY(0)' }
+            }}
+          >
+            Add New List
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 };

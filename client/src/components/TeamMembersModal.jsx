@@ -28,9 +28,12 @@ import {
   inviteMember,
   fetchTeamMembers,
   removeMember,
-  updateMemberRole
+  updateMemberRole,
+  revokeInvitation
 } from '../store/slices/teamSlice';
-import { UserPlus, Users, Search, Trash2, Shield, ShieldAlert, UserCheck, UserMinus } from 'lucide-react';
+import { UserPlus, Users, Search, Trash2, Shield, ShieldAlert, UserCheck, UserMinus, Check } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
+import ErrorDialog from './ErrorDialog';
 
 const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
   const dispatch = useDispatch();
@@ -41,6 +44,13 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
   const [tabValue, setTabValue] = useState(initialTab);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchPerformed, setSearchPerformed] = useState(false);
+  
+  // Dialog States
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [errorOpen, setErrorOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [confirmConfig, setConfirmConfig] = useState({ title: '', message: '', onConfirm: () => {} });
+  const [invitedUserIds, setInvitedUserIds] = useState([]);
 
   const isAdmin = role === 'ADMIN';
 
@@ -77,21 +87,58 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
   };
 
   const handleInvite = (userId) => {
-    dispatch(inviteMember({ teamId, targetUserId: userId }));
+    dispatch(inviteMember({ teamId, targetUserId: userId })).then((result) => {
+      if (inviteMember.fulfilled.match(result)) {
+        setInvitedUserIds(prev => [...prev, userId]);
+      }
+    });
+  };
+
+  const handleRevoke = (userId) => {
+    dispatch(revokeInvitation({ teamId, userId })).then((result) => {
+      if (revokeInvitation.fulfilled.match(result)) {
+        setInvitedUserIds(prev => prev.filter(id => id !== userId));
+      }
+    });
   };
 
   const handleRemoveMember = (userId, name) => {
-    if (window.confirm(`Remove ${name} from the team?`)) {
-      dispatch(removeMember({ teamId, userId }));
-    }
+    setConfirmConfig({
+      title: 'Remove Member?',
+      message: `Are you sure you want to remove ${name} from the team? They will lose all access to boards and tasks.`,
+      onConfirm: async () => {
+        const result = await dispatch(removeMember({ teamId, userId }));
+        if (removeMember.fulfilled.match(result)) {
+          setConfirmOpen(false);
+        } else {
+          setErrorMessage(result.payload || 'Failed to remove member.');
+          setErrorOpen(true);
+          setConfirmOpen(false);
+        }
+      }
+    });
+    setConfirmOpen(true);
   };
 
   const handleToggleRole = (userId, currentRole) => {
     const newRole = currentRole === 'ADMIN' ? 'MEMBER' : 'ADMIN';
     const action = newRole === 'ADMIN' ? 'promote' : 'demote';
-    if (window.confirm(`Are you sure you want to ${action} this member?`)) {
-      dispatch(updateMemberRole({ teamId, userId, role: newRole }));
-    }
+    
+    setConfirmConfig({
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} Member?`,
+      message: `Are you sure you want to ${action} this member to ${newRole}?`,
+      onConfirm: async () => {
+        const result = await dispatch(updateMemberRole({ teamId, userId, role: newRole }));
+        if (updateMemberRole.fulfilled.match(result)) {
+          setConfirmOpen(false);
+        } else {
+          setErrorMessage(result.payload || 'Failed to update role.');
+          setErrorOpen(true);
+          setConfirmOpen(false);
+        }
+      }
+    });
+    setConfirmOpen(true);
   };
 
   const handleClose = () => {
@@ -275,31 +322,58 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
                   }}
                 >
                   <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: 'var(--color-primary)', width: 32, height: 32, fontSize: '0.9rem' }}>
-                      {user.name.charAt(0)}
+                    <Avatar sx={{ 
+                      bgcolor: 'var(--color-primary)', 
+                      width: 40, height: 40, 
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      boxShadow: '0 4px 12px rgba(0,122,255,0.2)'
+                    }}>
+                      {(user.name || '?').charAt(0).toUpperCase()}
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText 
-                    primary={user.name} 
+                    primary={user.name || 'Anonymous User'} 
                     secondary={user.email} 
                     primaryTypographyProps={{ fontWeight: 600, color: '#1d1d1f', fontSize: '0.85rem' }}
                     secondaryTypographyProps={{ color: 'rgba(29, 29, 31, 0.5)', fontSize: '0.75rem' }}
                   />
-                  <Button 
-                    variant="outlined" 
-                    size="small"
-                    onClick={() => handleInvite(user.id)}
-                    sx={{ 
-                      textTransform: 'none', 
-                      fontSize: '0.75rem', 
-                      color: 'var(--color-secondary)',
-                      borderColor: 'rgba(16, 185, 129, 0.4)',
-                      borderRadius: 1.5,
-                      '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.1)', borderColor: 'var(--color-secondary)' }
-                    }}
-                  >
-                    Invite
-                  </Button>
+                  {(() => {
+                    const isInvited = invitedUserIds.includes(user.id);
+                    const isMember = teamMembers.some(m => m.userId === user.id);
+                    
+                    if (isMember) {
+                      return <Chip label="Member" size="small" variant="outlined" sx={{ fontWeight: 600, color: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,0,0,0.1)' }} />;
+                    }
+
+                    return (
+                      <Button 
+                        variant={isInvited ? "text" : "outlined"} 
+                        size="small"
+                        onClick={() => isInvited ? handleRevoke(user.id) : handleInvite(user.id)}
+                        startIcon={isInvited ? <Check size={14} className="check-icon" /> : null}
+                        sx={{ 
+                          textTransform: 'none', 
+                          fontSize: '0.75rem', 
+                          fontWeight: 700,
+                          color: isInvited ? 'var(--color-secondary)' : 'var(--color-secondary)',
+                          borderColor: isInvited ? 'transparent' : 'rgba(16, 185, 129, 0.4)',
+                          borderRadius: 1.5,
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          '&:hover': { 
+                            bgcolor: isInvited ? 'rgba(255, 59, 48, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
+                            borderColor: isInvited ? 'rgba(255, 59, 48, 0.4)' : 'var(--color-secondary)',
+                            color: isInvited ? '#FF3B30' : 'var(--color-secondary)',
+                            '& .check-icon': { display: 'none' },
+                            '&::after': { content: isInvited ? '"Revoke"' : '"Invite"' }
+                          },
+                          '&::after': { content: isInvited ? '"Requested"' : '"Invite"' }
+                        }}
+                      >
+                        {/* Empty because we use ::after for dynamic text */}
+                      </Button>
+                    );
+                  })()}
                 </ListItem>
               ))}
               {searchPerformed && searchResults.length === 0 && !isLoading && (
@@ -322,6 +396,22 @@ const TeamMembersModal = ({ open, onClose, teamId, initialTab = 0 }) => {
           Close
         </Button>
       </DialogActions>
+
+      <ConfirmDialog 
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText="Confirm"
+        type={confirmConfig.title.includes('Remove') ? 'danger' : 'info'}
+      />
+
+      <ErrorDialog 
+        open={errorOpen}
+        onClose={() => setErrorOpen(false)}
+        message={errorMessage}
+      />
     </Dialog>
   );
 };
