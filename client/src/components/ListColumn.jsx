@@ -24,9 +24,10 @@ function getAccentColor(name) {
   return 'transparent';
 }
 
-const ListColumn = ({ list, activeColumnId, setActiveColumnId }) => {
+const ListColumn = ({ list, activeColumnId, setActiveColumnId, isMyTasksFilter }) => {
   const dispatch = useDispatch();
   const { role } = useSelector((state) => state.board);
+  const currentUser = useSelector((state) => state.auth.user);
   const isAdmin = role === 'ADMIN';
 
   const isFormOpen = activeColumnId === list.id;
@@ -38,7 +39,8 @@ const ListColumn = ({ list, activeColumnId, setActiveColumnId }) => {
       title,
       priority,
       listId: list.id,
-      rank: getInitialRank(list.cards?.length || 0)
+      rank: getInitialRank(list.cards?.length || 0),
+      assigneeId: isMyTasksFilter && currentUser ? currentUser.id : null,
     }));
     setActiveColumnId(null);
   };
@@ -53,7 +55,7 @@ const ListColumn = ({ list, activeColumnId, setActiveColumnId }) => {
 
   return (
     <div
-      className="glass-column rounded-[32px] px-5 pb-5 pt-0 flex flex-col gap-4 min-w-[340px] w-[340px] h-full shrink-0 overflow-hidden"
+      className="glass-column rounded-[24px] px-4 pb-4 pt-0 flex flex-col gap-3 min-w-[300px] w-[300px] h-full shrink-0 overflow-hidden"
       style={{ borderTop: `2px solid ${accentColor}` }}
     >
       {/* Column Header */}
@@ -82,17 +84,6 @@ const ListColumn = ({ list, activeColumnId, setActiveColumnId }) => {
             />
           ))}
         </div>
-
-        {isAdmin && (
-          <Tooltip title="Delete List">
-            <button
-              onClick={onDeleteList}
-              className="text-gray-400 hover:text-red-500 transition-colors bg-black/5 hover:bg-black/10 rounded-full p-1.5 ml-2"
-            >
-              <Trash2 size={14} />
-            </button>
-          </Tooltip>
-        )}
       </div>
 
       {/* Cards area */}
@@ -114,8 +105,13 @@ const ListColumn = ({ list, activeColumnId, setActiveColumnId }) => {
             </div>
           ) : (
             list.cards.map((card) => (
-              /* CB-006 — pass listName so TaskCard can style Done cards */
-              <TaskCard key={card.id} card={card} listName={list.name} />
+              /* Pass isDraggable to TaskCard based on role and filter */
+              <TaskCard 
+                key={card.id} 
+                card={card} 
+                listName={list.name} 
+                isDraggable={isAdmin || isMyTasksFilter} 
+              />
             ))
           )}
         </SortableContext>
@@ -127,14 +123,16 @@ const ListColumn = ({ list, activeColumnId, setActiveColumnId }) => {
             onCancel={() => setActiveColumnId(null)}
           />
         ) : (
-          /* CB-003 — always visible */
-          <button
-            onClick={() => setActiveColumnId(list.id)}
-            className="mt-1 flex items-center justify-center gap-2 text-[#1d1d1f] bg-white/30 border border-white/40 hover:bg-white/50 py-3 rounded-[20px] transition-all duration-300 w-full font-semibold shadow-sm hover:shadow-md text-sm"
-            style={{ borderStyle: 'dashed' }}
-          >
-            <Plus size={15} /> Add Task
-          </button>
+          /* Show Add Task ONLY to Admins on the ToDo list */
+          isAdmin && getAccentColor(list.name) === COLUMN_ACCENT.todo && (
+            <button
+              onClick={() => setActiveColumnId(list.id)}
+              className="mt-1 flex items-center justify-center gap-2 text-[#1d1d1f] bg-white/30 border border-white/40 hover:bg-white/50 py-3 rounded-[20px] transition-all duration-300 w-full font-semibold shadow-sm hover:shadow-md text-sm"
+              style={{ borderStyle: 'dashed' }}
+            >
+              <Plus size={15} /> Add Task
+            </button>
+          )
         )}
       </div>
     </div>

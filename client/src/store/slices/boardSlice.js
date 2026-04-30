@@ -73,6 +73,17 @@ export const updateCardPosition = createAsyncThunk('board/updateCardPosition', a
   }
 });
 
+export const updateCardDetails = createAsyncThunk('board/updateCardDetails', async ({ cardId, data }, thunkAPI) => {
+  try {
+    const response = await axios.patch(`${API_URL}/cards/${cardId}`, data, {
+      headers: getAuthHeader(),
+    });
+    return response.data.data.card;
+  } catch (error) {
+    return thunkAPI.rejectWithValue(error.response?.data?.message || 'Error updating card details');
+  }
+});
+
 export const deleteList = createAsyncThunk('board/deleteList', async (listId, thunkAPI) => {
   try {
     await axios.delete(`${API_URL}/lists/${listId}`, {
@@ -310,6 +321,18 @@ export const boardSlice = createSlice({
             if (!targetList.cards) targetList.cards = [];
             targetList.cards.push(action.payload);
             targetList.cards.sort((a, b) => a.rank.localeCompare(b.rank));
+          }
+        }
+      })
+      .addCase(updateCardDetails.fulfilled, (state, action) => {
+        const board = state.boards.find(b => b.lists?.find(l => l.cards?.find(c => c.id === action.payload.id))) || state.boards[0];
+        if (board) {
+          const list = board.lists.find(l => l.cards?.find(c => c.id === action.payload.id));
+          if (list) {
+            const index = list.cards.findIndex(c => c.id === action.payload.id);
+            if (index !== -1) {
+              list.cards[index] = action.payload;
+            }
           }
         }
       })

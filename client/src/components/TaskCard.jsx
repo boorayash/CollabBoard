@@ -1,13 +1,15 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Tooltip } from '@mui/material';
-import { Trash2, CheckCircle2 } from 'lucide-react';
-import { useDispatch } from 'react-redux';
-import { deleteCard } from '../store/slices/boardSlice';
+import { Tooltip, Button } from '@mui/material';
+import { Trash2, CheckCircle2, UserPlus, User } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { deleteCard, updateCardDetails } from '../store/slices/boardSlice';
 import ProgressBar from './ProgressBar';
 
-const TaskCard = ({ card, listName }) => {
+const TaskCard = ({ card, listName, isDraggable = true }) => {
   const dispatch = useDispatch();
+  const currentUser = useSelector((state) => state.auth.user);
+  
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging,
   } = useSortable({ id: card.id });
@@ -17,7 +19,7 @@ const TaskCard = ({ card, listName }) => {
     transition,
     opacity: isDragging ? 0.3 : 1,
     marginBottom: 8,
-    cursor: 'grab',
+    cursor: isDraggable ? 'grab' : 'default',
   };
 
   // CB-006 — detect Done column
@@ -27,6 +29,16 @@ const TaskCard = ({ card, listName }) => {
     e.stopPropagation();
     if (window.confirm(`Delete task "${card.title}"?`)) {
       dispatch(deleteCard(card.id));
+    }
+  };
+
+  const handleAssignToMe = (e) => {
+    e.stopPropagation();
+    if (currentUser) {
+      dispatch(updateCardDetails({
+        cardId: card.id,
+        data: { assigneeId: currentUser.id }
+      }));
     }
   };
 
@@ -49,9 +61,9 @@ const TaskCard = ({ card, listName }) => {
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className={`glass-card animate-slide-in rounded-[28px] p-6 cursor-grab relative overflow-hidden ${isDragging ? 'dragging-state' : ''}`}
+      {...(isDraggable ? attributes : {})}
+      {...(isDraggable ? listeners : {})}
+      className={`glass-card animate-slide-in rounded-[28px] p-6 relative overflow-hidden ${isDragging ? 'dragging-state' : ''}`}
     >
       <div className="flex justify-between items-start mb-3">
         <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${tagBg} ${tagColor}`}>
@@ -95,17 +107,24 @@ const TaskCard = ({ card, listName }) => {
           </span>
         </div>
 
-        <div className="flex ml-2">
-          {[
-            'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=64&q=80',
-            'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&q=80'
-          ].map((avatar, i) => (
-            <div
-              key={i}
-              className="w-7 h-7 rounded-full border-2 border-white -ml-2 bg-cover bg-center"
-              style={{ backgroundImage: `url(${avatar})` }}
-            />
-          ))}
+        <div className="flex ml-2 items-center">
+          {card.assignee ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#1d1d1f]/5 rounded-full border border-[#1d1d1f]/10">
+              <User size={12} className="opacity-50" />
+              <span className="text-[10px] font-bold text-[#1d1d1f]/70 truncate max-w-[80px]">
+                {card.assignee.name.split(' ')[0]}
+              </span>
+            </div>
+          ) : (
+            <button
+              onClick={handleAssignToMe}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-[#007AFF] bg-[#007AFF]/10 hover:bg-[#007AFF]/20 rounded-full transition-colors border border-[#007AFF]/20"
+            >
+              <UserPlus size={12} />
+              Assign to me
+            </button>
+          )}
         </div>
       </div>
     </div>

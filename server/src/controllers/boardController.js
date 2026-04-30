@@ -50,7 +50,14 @@ exports.getBoards = async (req, res) => {
       include: {
         lists: {
           orderBy: { rank: 'asc' },
-          include: { cards: { orderBy: { rank: 'asc' } } },
+          include: { 
+            cards: { 
+              orderBy: { rank: 'asc' },
+              include: {
+                assignee: { select: { id: true, name: true } }
+              }
+            } 
+          },
         },
       },
     });
@@ -72,7 +79,14 @@ exports.getBoards = async (req, res) => {
         include: {
           lists: {
             orderBy: { rank: 'asc' },
-            include: { cards: { orderBy: { rank: 'asc' } } },
+            include: { 
+              cards: { 
+                orderBy: { rank: 'asc' },
+                include: {
+                  assignee: { select: { id: true, name: true } }
+                }
+              } 
+            },
           },
         },
       });
