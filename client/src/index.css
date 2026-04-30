@@ -41,13 +41,41 @@ body {
   pointer-events: none;
 }
 
-.orb-1 { width: 600px; height: 600px; background: #007aff; top: -100px; left: -100px; }
-.orb-2 { width: 500px; height: 500px; background: #89cff0; bottom: -100px; right: -100px; animation-delay: -5s; }
-.orb-3 { width: 400px; height: 400px; background: #ffd700; top: 40%; left: 50%; opacity: 0.3; animation-delay: -10s; }
+.orb-1 {
+  width: 600px;
+  height: 600px;
+  background: #007aff;
+  top: -100px;
+  left: -100px;
+}
+
+.orb-2 {
+  width: 500px;
+  height: 500px;
+  background: #89cff0;
+  bottom: -100px;
+  right: -100px;
+  animation-delay: -5s;
+}
+
+.orb-3 {
+  width: 400px;
+  height: 400px;
+  background: #ffd700;
+  top: 40%;
+  left: 50%;
+  opacity: 0.3;
+  animation-delay: -10s;
+}
 
 @keyframes move {
-  from { transform: translate(0, 0) scale(1); }
-  to { transform: translate(100px, 100px) scale(1.2); }
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+
+  to {
+    transform: translate(100px, 100px) scale(1.2);
+  }
 }
 
 /* Glassmorphism Panels */
@@ -84,22 +112,37 @@ body {
 
 /* Card Entrance Animation */
 @keyframes slideIn {
-  from { transform: translateY(30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* Progress Bar Shine */
 .progress-shine::after {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
   animation: shine 2s infinite;
 }
 
 @keyframes shine {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 /* Activity Wave */
@@ -110,8 +153,15 @@ body {
 }
 
 @keyframes wave {
-  0%, 100% { height: 4px; }
-  50% { height: 12px; }
+
+  0%,
+  100% {
+    height: 4px;
+  }
+
+  50% {
+    height: 12px;
+  }
 }
 
 /* Drag States */
@@ -127,12 +177,23 @@ body {
 }
 
 /* Scrollbar */
-.kanban-scroll::-webkit-scrollbar { height: 8px; }
-.kanban-scroll::-webkit-scrollbar-track { background: transparent; }
-.kanban-scroll::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-radius: 4px; }
+.kanban-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.kanban-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.kanban-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
 
 /* Typography */
-.font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+.font-display {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
 
 @theme {
   --color-brand-50: #f0f9ff;
@@ -146,19 +207,43 @@ body {
 }
 
 @keyframes blob {
-  0% { transform: translate(0px, 0px) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-  100% { transform: translate(0px, 0px) scale(1); }
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-15px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-15px);
+  }
 }
 
-.animate-blob { animation: blob 10s infinite; }
-.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-blob {
+  animation: blob 10s infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
 .connector-track {
   background-image: linear-gradient(to right, #cbd5e1 33%, rgba(255, 255, 255, 0) 0%);
   background-position: bottom;
@@ -183,18 +268,23 @@ body {
 }
 
 .gloss-reflection {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.4) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.4) 50%,
+      rgba(255, 255, 255, 0) 100%);
   pointer-events: none;
 }
 
 @keyframes cursor-float {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(4px, -4px); }
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(4px, -4px);
+  }
 }
 
 .animate-cursor-float {
@@ -225,55 +315,102 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
 .glass-column {
-  background: linear-gradient(var(--column-tint, rgba(255,255,255,0)), var(--column-tint, rgba(255,255,255,0))), rgba(255, 255, 255, 0.09);
+  background: linear-gradient(var(--column-tint, rgba(255, 255, 255, 0)), var(--column-tint, rgba(255, 255, 255, 0))), rgba(255, 255, 255, 0.09);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 
-    inset 0 1px 0 rgba(255, 255, 255, 0.15), 
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
     0 10px 40px rgba(0, 0, 0, 0.08);
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-column:hover {
-  background: linear-gradient(var(--column-tint, rgba(255,255,255,0)), var(--column-tint, rgba(255,255,255,0))), rgba(255, 255, 255, 0.12);
+  background: linear-gradient(var(--column-tint, rgba(255, 255, 255, 0)), var(--column-tint, rgba(255, 255, 255, 0))), rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.25);
   transform: translateY(-4px);
-  box-shadow: 
+  box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.25),
     0 20px 50px rgba(0, 0, 0, 0.12);
 }
 
 @keyframes messageSlideUp {
-  0% { 
-    opacity: 0; 
-    transform: translateY(60px) scale(0.9); 
+  0% {
+    opacity: 0;
+    transform: translateY(60px) scale(0.9);
   }
-  100% { 
-    opacity: 1; 
-    transform: translateY(0) scale(1); 
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
 .animate-message-in {
   animation: messageSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
 }
-.kanban-scroll {
+
+/* Generic scrollbar utility - used by Chat and Board */
+.kanban-scroll::-webkit-scrollbar,
+.kanban-board-scroll::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.kanban-scroll::-webkit-scrollbar-track,
+.kanban-board-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.kanban-scroll::-webkit-scrollbar-thumb,
+.kanban-board-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 10px;
+  transition: background 0.3s;
+}
+
+.kanban-scroll:hover::-webkit-scrollbar-thumb,
+.kanban-board-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.kanban-scroll::-webkit-scrollbar-thumb:hover,
+.kanban-board-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Specific layout for the Kanban Board only */
+.kanban-board-scroll {
   display: flex;
   overflow-x: auto;
   gap: 2rem;
   padding: 2rem;
   min-height: calc(100vh - 200px);
-  align-items: flex-start;
+  align-items: stretch;
+  scroll-behavior: smooth;
+
+  /* Subtle edge fade - only for the board */
+  mask-image: linear-gradient(to right,
+      transparent,
+      black 3%,
+      black 97%,
+      transparent);
+  -webkit-mask-image: linear-gradient(to right,
+      transparent,
+      black 3%,
+      black 97%,
+      transparent);
 }
 
-.kanban-scroll .glass-column {
+.kanban-board-scroll .glass-column {
+  /* Prevent columns from shrinking as lists increase */
   flex: 0 0 320px;
   width: 320px;
 }

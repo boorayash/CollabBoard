@@ -93,10 +93,10 @@ const Board = () => {
 
   const handleCreateList = () => {
     if (newListName.trim() && board) {
-      dispatch(createList({ 
-        name: newListName.trim(), 
-        boardId: board.id, 
-        rank: getInitialRank(board.lists?.length || 0) 
+      dispatch(createList({
+        name: newListName.trim(),
+        boardId: board.id,
+        rank: getInitialRank(board.lists?.length || 0)
       }));
       setNewListDialogOpen(false);
     }
@@ -140,7 +140,7 @@ const Board = () => {
 
   const filteredLists = board?.lists?.map(list => ({
     ...list,
-    cards: myTasksFilter 
+    cards: myTasksFilter
       ? list.cards?.filter(c => c.assignees?.some(a => a.id === user?.id))
       : list.cards
   }));
@@ -156,7 +156,7 @@ const Board = () => {
       <Sidebar />
 
       <main className="flex-1 flex flex-col min-w-0 z-10 overflow-hidden items-center">
-        <div className="flex-1 flex flex-col gap-8 w-full max-w-[1600px] h-full py-4">
+        <div className="flex-1 flex flex-col gap-8 w-full max-w-[1600px] h-full py-4 min-h-0">
           <header className="flex justify-between items-center px-6 h-16 shrink-0 z-10">
             <div className="flex items-center gap-3">
               <div className="font-display text-2xl tracking-tight font-extrabold text-[#1d1d1f]">
@@ -201,7 +201,7 @@ const Board = () => {
                   backdropFilter: 'blur(10px)',
                   border: '1px solid rgba(255,255,255,0.5)',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                  '&:hover': { 
+                  '&:hover': {
                     bgcolor: myTasksFilter ? '#0062cc' : 'rgba(255,255,255,0.6)',
                     transform: 'translateY(-1px)',
                     boxShadow: '0 6px 16px rgba(0,0,0,0.08)'
@@ -227,7 +227,7 @@ const Board = () => {
                   backdropFilter: 'blur(10px)',
                   border: '1px solid rgba(255,255,255,0.5)',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                  '&:hover': { 
+                  '&:hover': {
                     bgcolor: 'rgba(255,255,255,0.6)',
                     transform: 'translateY(-1px)',
                     boxShadow: '0 6px 16px rgba(0,0,0,0.08)'
@@ -238,8 +238,8 @@ const Board = () => {
                 Team
               </Button>
 
-              <IconButton 
-                onClick={() => setChatDrawerOpen(true)} 
+              <IconButton
+                onClick={() => setChatDrawerOpen(true)}
                 sx={{
                   width: 42,
                   height: 42,
@@ -249,7 +249,7 @@ const Board = () => {
                   backdropFilter: 'blur(10px)',
                   border: '1px solid rgba(255,255,255,0.5)',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                  '&:hover': { 
+                  '&:hover': {
                     bgcolor: 'rgba(255,255,255,0.6)',
                     transform: 'translateY(-1px)',
                     boxShadow: '0 6px 16px rgba(0,0,0,0.08)'
@@ -260,8 +260,8 @@ const Board = () => {
                 <MessageCircle size={20} />
               </IconButton>
 
-              <IconButton 
-                onClick={handleSettingsClick} 
+              <IconButton
+                onClick={handleSettingsClick}
                 sx={{
                   width: 42,
                   height: 42,
@@ -271,7 +271,7 @@ const Board = () => {
                   backdropFilter: 'blur(10px)',
                   border: '1px solid rgba(255,255,255,0.5)',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                  '&:hover': { 
+                  '&:hover': {
                     bgcolor: 'rgba(255,255,255,0.6)',
                     transform: 'translateY(-1px)',
                     boxShadow: '0 6px 16px rgba(0,0,0,0.08)'
@@ -297,7 +297,7 @@ const Board = () => {
             </Stack>
           </header>
 
-          <div className="flex-1 overflow-x-auto kanban-scroll pb-8">
+          <div className="flex-1 overflow-hidden pb-4 flex flex-col min-h-0">
             {isLoading ? (
               <Box sx={{ display: 'flex', gap: 3, height: '100%', width: '100%', justifyContent: 'center', py: 4 }}>
                 <Skeleton variant="rounded" width={320} height={500} sx={{ bgcolor: 'var(--glass-bg)', borderRadius: 3 }} />
@@ -305,7 +305,7 @@ const Board = () => {
                 <Skeleton variant="rounded" width={320} height={400} sx={{ bgcolor: 'var(--glass-bg)', borderRadius: 3 }} />
               </Box>
             ) : board ? (
-              <div className="flex min-w-full items-start pb-4">
+              <div className="flex flex-1 min-w-full h-full pb-4 min-h-0">
                 {(!board.lists || board.lists.length === 0) ? (
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', width: '100%', gap: 3 }}>
                     <Typography variant="h5" sx={{ color: 'rgba(29,29,31,0.5)', fontWeight: 600 }}>
@@ -318,11 +318,11 @@ const Board = () => {
                     )}
                   </Box>
                 ) : (
-                  <KanbanBoard 
-                    initialData={filteredLists} 
-                    isAdmin={isAdmin} 
-                    onAddList={onAddList} 
-                    myTasksFilter={myTasksFilter} 
+                  <KanbanBoard
+                    initialData={filteredLists}
+                    isAdmin={isAdmin}
+                    onAddList={onAddList}
+                    myTasksFilter={myTasksFilter}
                   />
                 )}
               </div>
@@ -336,8 +336,8 @@ const Board = () => {
       </main>
 
       {/* New List Dialog */}
-      <Dialog 
-        open={newListDialogOpen} 
+      <Dialog
+        open={newListDialogOpen}
         onClose={() => setNewListDialogOpen(false)}
         maxWidth="xs"
         fullWidth
@@ -376,28 +376,28 @@ const Board = () => {
             value={newListName}
             onChange={(e) => setNewListName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCreateList()}
-            sx={{ 
-              input: { color: '#1d1d1f', fontWeight: 600 }, 
-              '& .MuiOutlinedInput-root': { 
+            sx={{
+              input: { color: '#1d1d1f', fontWeight: 600 },
+              '& .MuiOutlinedInput-root': {
                 bgcolor: 'rgba(0,0,0,0.03)',
                 borderRadius: 3,
                 height: 52,
-                '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' }, 
+                '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' },
                 '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.15)' },
-                '&.Mui-focused fieldset': { 
+                '&.Mui-focused fieldset': {
                   borderColor: 'var(--color-primary)',
                   borderWidth: '1.5px'
                 }
-              } 
+              }
             }}
           />
         </DialogContent>
         <DialogActions sx={{ p: 3, gap: 1.5 }}>
-          <Button 
-            onClick={() => setNewListDialogOpen(false)} 
-            sx={{ 
-              textTransform: 'none', 
-              fontWeight: 700, 
+          <Button
+            onClick={() => setNewListDialogOpen(false)}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
               color: 'rgba(29, 29, 31, 0.4)',
               fontSize: '0.9rem',
               '&:hover': { color: '#1d1d1f', bgcolor: 'transparent' }
@@ -405,14 +405,14 @@ const Board = () => {
           >
             Cancel
           </Button>
-          <Button 
-            onClick={handleCreateList} 
-            variant="contained" 
-            disabled={!newListName.trim()} 
-            sx={{ 
-              textTransform: 'none', 
-              fontWeight: 700, 
-              borderRadius: '14px', 
+          <Button
+            onClick={handleCreateList}
+            variant="contained"
+            disabled={!newListName.trim()}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              borderRadius: '14px',
               px: 4,
               height: 44,
               bgcolor: 'var(--color-primary)',
@@ -428,7 +428,7 @@ const Board = () => {
       <TeamMembersModal open={membersModalOpen} onClose={() => setMembersModalOpen(false)} teamId={teamId} initialTab={initialModalTab} />
       <ChatDrawer open={chatDrawerOpen} onClose={() => setChatDrawerOpen(false)} teamId={teamId} />
 
-      <ConfirmDialog 
+      <ConfirmDialog
         open={leaveDialogOpen}
         onClose={() => setLeaveDialogOpen(false)}
         onConfirm={handleLeaveTeam}
@@ -438,7 +438,7 @@ const Board = () => {
         type="danger"
       />
 
-      <ErrorDialog 
+      <ErrorDialog
         open={errorDialogOpen}
         onClose={() => setErrorDialogOpen(false)}
         message={errorMessage}

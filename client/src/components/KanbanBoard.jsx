@@ -1,6 +1,6 @@
 // Data flow: Redux (boardSlice) → Board.jsx (selector) → KanbanBoard (initialData prop) → local state
 // Socket events update Redux → triggers re-render chain → KanbanBoard syncs via useEffect
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { DndContext, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Box } from '@mui/material';
@@ -155,11 +155,11 @@ const KanbanBoard = ({ initialData, isAdmin, onAddList, myTasksFilter }) => {
 
   return (
     <Box 
-      className="kanban-scroll"
-      sx={{ 
-        display: 'flex', 
-        gap: 3, 
-        alignItems: 'flex-start', 
+      className="kanban-board-scroll"
+      sx={{
+        display: 'flex',
+        gap: 3,
+        alignItems: 'stretch',
         height: '100%',
         width: '100%',
         overflowX: 'auto',
@@ -173,45 +173,72 @@ const KanbanBoard = ({ initialData, isAdmin, onAddList, myTasksFilter }) => {
         onDragEnd={handleDragEnd}
         cancelDrop={({ active }) => !canDragCard(active.id)}
       >
-        {lists.map((list) => (
-          <ListColumn
-            key={list.id}
-            list={list}
-            activeColumnId={activeColumnId}
-            setActiveColumnId={setActiveColumnId}
-            isAdmin={isAdmin}
-            currentUserId={currentUserId}
-          />
+        {lists.map((list, index) => (
+          <Fragment key={list.id}>
+            <ListColumn
+              list={list}
+              activeColumnId={activeColumnId}
+              setActiveColumnId={setActiveColumnId}
+              isAdmin={isAdmin}
+              currentUserId={currentUserId}
+            />
+
+            {/* Subtle Divider after the 3rd core column - Always show if we have at least 3 lists */}
+            {index === 2 && (
+              <Box
+                sx={{
+                  flexShrink: 0,
+                  width: '2px',
+                  backgroundColor: 'rgba(0,0,0,0.06)',
+                  alignSelf: 'stretch',
+                  my: 2,
+                  mx: 1,
+                  borderRadius: 1
+                }}
+              />
+            )}
+          </Fragment>
         ))}
       </DndContext>
-      
+
       {isAdmin && !myTasksFilter && (
-        <Box sx={{ flexShrink: 0 }}>
-          <Button 
-            onClick={onAddList} 
-            variant="outlined" 
-            startIcon={<Plus size={20} />} 
-            sx={{ 
-              minWidth: 280, 
-              height: 64, 
-              borderRadius: 3, 
-              border: '2px dashed rgba(0,0,0,0.1)', 
-              color: 'rgba(29,29,31,0.5)', 
-              background: 'rgba(255,255,255,0.45)', 
-              backdropFilter: 'blur(16px)', 
-              textTransform: 'none', 
-              fontSize: '1.05rem', 
+        <Box
+          className="glass-column rounded-[24px]"
+          sx={{
+            flexShrink: 0,
+            width: 320,
+            px: 2,
+            pt: 5, // Matches the pt-5 on ListColumn headers
+            pb: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            borderTop: '2px solid transparent',
+            minHeight: '100%' // Stretch full height
+          }}
+        >
+          <Button
+            onClick={onAddList}
+            variant="outlined"
+            startIcon={<Plus size={24} />}
+            sx={{
+              width: '100%',
+              py: 2.5,
+              borderRadius: '16px',
+              border: '2px dashed rgba(0,0,0,0.15)',
+              color: 'var(--color-primary)',
+              background: 'rgba(255,255,255,0.3)',
+              backdropFilter: 'blur(8px)',
+              textTransform: 'none',
+              fontSize: '1rem',
               fontWeight: 700,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.06)',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': { 
-                background: 'rgba(255,255,255,0.6)', 
+              '&:hover': {
+                background: 'rgba(255,255,255,0.5)',
                 borderColor: 'var(--color-primary)',
-                color: 'var(--color-primary)',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 12px 40px rgba(0,0,0,0.1)'
-              },
-              '&:active': { transform: 'translateY(0)' }
+                transform: 'translateY(-2px)'
+              }
             }}
           >
             Add New List

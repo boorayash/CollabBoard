@@ -99,7 +99,7 @@ const TaskCard = ({ card, listName, isAdmin, currentUserId, teamMembers = [] }) 
       style={style}
       {...attributes}
       {...listeners}
-      className={`glass-card group animate-slide-in rounded-[28px] p-6 relative overflow-hidden
+      className={`glass-card shrink-0 group animate-slide-in rounded-[28px] p-6 relative overflow-hidden
         ${isDragging ? 'dragging-state' : ''}
         ${!canDrag ? 'opacity-80' : ''}`}
     >
@@ -168,16 +168,30 @@ const TaskCard = ({ card, listName, isAdmin, currentUserId, teamMembers = [] }) 
           {card.assignees && card.assignees.length > 0 ? (
             <div className="flex items-center gap-2">
               <div className="flex -space-x-2">
-                {card.assignees.map((assignee) => (
-                  <Tooltip key={assignee.id} title={assignee.name}>
-                    <div
-                      className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white select-none shrink-0"
-                      style={{ backgroundColor: stringToColor(assignee.id) }}
-                    >
-                      {assignee.name?.charAt(0).toUpperCase()}
-                    </div>
-                  </Tooltip>
-                ))}
+                {card.assignees.map((assignee) => {
+                  const isMe = assignee.id === currentUserId;
+                  const canUnassign = isAdmin || isMe;
+                  
+                  return (
+                    <Tooltip key={assignee.id} title={canUnassign ? `Click to unassign ${assignee.name}` : assignee.name}>
+                      <div
+                        onClick={(e) => {
+                          if (canUnassign) {
+                            e.stopPropagation();
+                            handleToggleAssignee(assignee.id);
+                          }
+                        }}
+                        className={`w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white select-none shrink-0 ${canUnassign ? 'cursor-pointer hover:scale-110 hover:shadow-md' : 'cursor-default'}`}
+                        style={{ 
+                          backgroundColor: stringToColor(assignee.id),
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }}
+                      >
+                        {assignee.name?.charAt(0).toUpperCase()}
+                      </div>
+                    </Tooltip>
+                  );
+                })}
               </div>
               
               {isAdmin && (

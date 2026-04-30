@@ -67,7 +67,7 @@ const ListColumn = ({ list, activeColumnId, setActiveColumnId, isAdmin, currentU
       }}
     >
       {/* Column Header */}
-      <div className="flex justify-between items-center px-1 pt-5 border-b border-white/10 pb-4">
+      <div className="flex justify-between items-center px-1 pt-5 border-b border-white/10 pb-4 shrink-0 z-10">
         <div className="flex items-center gap-2">
           <span className="font-display uppercase text-[11px] tracking-[1.5px] font-bold opacity-70">
             {list.name}
@@ -105,26 +105,29 @@ const ListColumn = ({ list, activeColumnId, setActiveColumnId, isAdmin, currentU
         )}
       </div>
 
-      {/* Cards area */}
+      {/* Scrollable Cards Area */}
       <div
         ref={setNodeRef}
-        className={`flex flex-col gap-3 flex-1 pb-2 transition-colors duration-300 rounded-[28px] ${isOver ? 'drop-target p-2 -m-2' : ''}`}
+        className={`flex flex-col gap-3 flex-1 overflow-y-auto kanban-scroll px-1 pt-4 pb-4 transition-colors duration-300 ${isOver ? 'drop-target' : ''}`}
+        style={{
+          maskImage: 'linear-gradient(to bottom, transparent, black 16px, black calc(100% - 16px), transparent)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 16px, black calc(100% - 16px), transparent)'
+        }}
       >
         <SortableContext items={list.cards?.map((c) => c.id) || []} strategy={verticalListSortingStrategy}>
           {(!list.cards || list.cards.length === 0) ? (
-            /* CB-002 — styled empty placeholder */
-            <div className="flex flex-col items-center justify-center py-8 gap-2 select-none pointer-events-none">
+            /* Premium Empty State - Centered within scroll area */
+            <div className="flex flex-col items-center justify-center flex-1 h-full min-h-[150px] gap-3 select-none pointer-events-none opacity-60">
               <div
-                className="w-9 h-9 flex items-center justify-center rounded-xl"
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-black/5"
                 style={{ border: '1.5px dashed rgba(29,29,31,0.15)' }}
               >
-                <Inbox size={18} className="text-[#1d1d1f]/25" />
+                <Inbox size={20} className="text-[#1d1d1f]/50" />
               </div>
-              <span className="text-[12px] font-medium text-[#1d1d1f]/30">No tasks yet</span>
+              <span className="text-[13px] font-bold text-[#1d1d1f]/40 tracking-tight">No tasks yet</span>
             </div>
           ) : (
             list.cards.map((card) => (
-              /* CB-006 — pass listName; DND-PERM-01/02 — pass isAdmin + currentUserId */
               <TaskCard
                 key={card.id}
                 card={card}
@@ -136,8 +139,10 @@ const ListColumn = ({ list, activeColumnId, setActiveColumnId, isAdmin, currentU
             ))
           )}
         </SortableContext>
+      </div>
 
-        {/* CB-007 / TASK-ASSIGN-01 — inline form (all members) or Add Task button (To Do column only) */}
+      {/* Fixed Footer (Add Task) */}
+      <div className="shrink-0 pt-3 mt-auto z-10">
         {getAccentColor(list.name) === COLUMN_ACCENT.todo && (
           isFormOpen ? (
             <InlineAddTaskForm
@@ -149,13 +154,12 @@ const ListColumn = ({ list, activeColumnId, setActiveColumnId, isAdmin, currentU
               board={board}
             />
           ) : (
-            /* CB-003 — always visible for all members in To Do list */
             <button
               onClick={() => setActiveColumnId(list.id)}
-              className="mt-1 flex items-center justify-center gap-2 text-[#1d1d1f] bg-white/30 border border-white/40 hover:bg-white/50 py-3 rounded-[20px] transition-all duration-300 w-full font-semibold shadow-sm hover:shadow-md text-sm"
+              className="flex items-center justify-center gap-2 text-[#1d1d1f] bg-white/40 border border-white/60 hover:bg-white/60 py-3.5 rounded-[20px] transition-all duration-300 w-full font-bold shadow-sm hover:shadow-md text-[13px]"
               style={{ borderStyle: 'dashed' }}
             >
-              <Plus size={15} /> Add Task
+              <Plus size={16} /> Add Task
             </button>
           )
         )}
