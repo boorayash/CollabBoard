@@ -9,9 +9,9 @@ import { updateCardPosition, moveCardOptimistic } from '../store/slices/boardSli
 import ListColumn from './ListColumn';
 import { generateNewRank } from '../utils/ranks';
 
-const KanbanBoard = ({ initialData }) => {
+const KanbanBoard = ({ initialData, isMyTasksFilter }) => {
   const [lists, setLists] = useState(initialData);
-  const [activeColumnId, setActiveColumnId] = useState(null); // CB-007: one form at a time
+  const [activeColumnId, setActiveColumnId] = useState(null);
 
   useEffect(() => {
     setLists(initialData);
@@ -165,6 +165,7 @@ const KanbanBoard = ({ initialData }) => {
             list={list}
             activeColumnId={activeColumnId}
             setActiveColumnId={setActiveColumnId}
+            isMyTasksFilter={isMyTasksFilter}
           />
         ))}
       </DndContext>

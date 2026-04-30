@@ -11,7 +11,8 @@ import { leaveTeam } from '../store/slices/teamSlice';
 import KanbanBoard from '../components/KanbanBoard';
 import Sidebar from '../components/Sidebar';
 import TeamMembersModal from '../components/TeamMembersModal';
-import { Plus, UserPlus, Users, Settings, LogOut, Pencil, Check, X } from 'lucide-react';
+import ChatDrawer from '../components/ChatDrawer';
+import { Plus, UserPlus, Users, Settings, LogOut, Pencil, Check, X, MessageCircle, LayoutList } from 'lucide-react';
 import { getInitialRank } from '../utils/ranks';
 import { connectSocket, disconnectSocket, joinBoard, leaveBoard } from '../socket/socketClient';
 import { setupBoardListeners, cleanupBoardListeners } from '../socket/boardEvents';
@@ -22,9 +23,11 @@ const Board = () => {
   const navigate = useNavigate();
 
   const [membersModalOpen, setMembersModalOpen] = useState(false);
+  const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
   const [initialModalTab, setInitialModalTab] = useState(0);
   const [anchorEl, setAnchorEl] = useState(null);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [myTasksFilter, setMyTasksFilter] = useState(false);
 
   // Board rename state
   const [isRenamingBoard, setIsRenamingBoard] = useState(false);
@@ -112,6 +115,13 @@ const Board = () => {
     ? 'Loading…'
     : board?.name ?? 'No board';
 
+  const filteredLists = board?.lists?.map(list => ({
+    ...list,
+    cards: myTasksFilter 
+      ? list.cards?.filter(c => c.assigneeId === user?.id)
+      : list.cards
+  }));
+
   return (
     <div className="w-full h-screen flex p-6 gap-6 relative z-0">
       {/* Background Orbs */}
@@ -170,11 +180,31 @@ const Board = () => {
 
             <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
               <button
+                onClick={() => setMyTasksFilter(!myTasksFilter)}
+                className={`border shadow-sm backdrop-blur-md px-6 py-2.5 rounded-full font-semibold text-sm cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md flex items-center gap-2 ${
+                  myTasksFilter 
+                    ? 'bg-[#1d1d1f] border-[#1d1d1f] text-white' 
+                    : 'bg-white/30 border-white/40 text-[#1d1d1f] hover:bg-white'
+                }`}
+              >
+                <LayoutList size={18} />
+                My Tasks
+              </button>
+
+              <button
                 onClick={() => openMembersModal(0)}
                 className="bg-white/30 border border-white/40 shadow-sm backdrop-blur-md text-[#1d1d1f] px-6 py-2.5 rounded-full font-semibold text-sm cursor-pointer transition-all duration-300 hover:bg-white hover:-translate-y-0.5 hover:shadow-md flex items-center gap-2"
               >
                 <Users size={18} />
                 View Members
+              </button>
+
+              <button
+                onClick={() => setChatDrawerOpen(true)}
+                className="bg-[#007AFF]/10 border border-[#007AFF]/20 shadow-sm backdrop-blur-md text-[#007AFF] px-6 py-2.5 rounded-full font-semibold text-sm cursor-pointer transition-all duration-300 hover:bg-[#007AFF]/20 hover:-translate-y-0.5 hover:shadow-md flex items-center gap-2"
+              >
+                <MessageCircle size={18} />
+                Team Chat
               </button>
 
               {isAdmin && (
@@ -239,7 +269,7 @@ const Board = () => {
                 <Skeleton variant="rounded" width={320} height={400} sx={{ bgcolor: 'var(--glass-bg)', borderRadius: 3 }} />
               </Box>
             ) : board ? (
-              <div className="flex justify-center min-w-full items-start">
+              <div className="flex min-w-full items-start">
                 {(!board.lists || board.lists.length === 0) ? (
                   <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', width: '100%', gap: 3 }}>
                     <Typography variant="h5" sx={{ color: 'rgba(29,29,31,0.5)', fontWeight: 600 }}>
@@ -262,9 +292,9 @@ const Board = () => {
                     )}
                   </Box>
                 ) : (
-                  <div className="flex gap-6 items-start px-12 py-4 mx-auto w-max">
-                    <KanbanBoard initialData={board.lists} />
-                    {isAdmin && (
+                  <div className="flex gap-6 items-start px-8 py-4 w-max">
+                    <KanbanBoard initialData={filteredLists} isMyTasksFilter={myTasksFilter} />
+                    {isAdmin && !myTasksFilter && (
                       <Button
                         onClick={onAddList}
                         variant="outlined"
@@ -307,6 +337,12 @@ const Board = () => {
         onClose={() => setMembersModalOpen(false)}
         teamId={teamId}
         initialTab={initialModalTab}
+      />
+
+      <ChatDrawer
+        open={chatDrawerOpen}
+        onClose={() => setChatDrawerOpen(false)}
+        teamId={teamId}
       />
 
       {/* Leave Team Dialog */}
