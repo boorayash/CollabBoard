@@ -1,6 +1,7 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const { setupBoardRooms } = require('./boardRooms');
+const { setupChatRooms } = require('./chatRooms');
 
 let io;
 
@@ -31,6 +32,7 @@ const initSocket = (server) => {
   io.on('connection', (socket) => {
     console.log(`User connected: ${socket.userId} (socket: ${socket.id})`);
     setupBoardRooms(socket, io);
+    setupChatRooms(socket, io);
 
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${socket.userId} (socket: ${socket.id})`);

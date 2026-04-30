@@ -24,6 +24,10 @@ export const connectSocket = (token) => {
       socket.emit('board:join', currentBoardId);
       console.log('Rejoined board room after reconnect:', currentBoardId);
     }
+    if (currentTeamId) {
+      socket.emit('join_team_chat', currentTeamId);
+      console.log('Rejoined team chat after reconnect:', currentTeamId);
+    }
   });
 
   socket.on('connect_error', (err) => {
@@ -60,5 +64,29 @@ export const leaveBoard = (boardId) => {
   }
   if (socket?.connected) {
     socket.emit('board:leave', boardId);
+  }
+};
+
+let currentTeamId = null;
+
+export const joinTeamChat = (teamId) => {
+  currentTeamId = teamId;
+  if (socket?.connected) {
+    socket.emit('join_team_chat', teamId);
+  }
+};
+
+export const leaveTeamChat = (teamId) => {
+  if (currentTeamId === teamId) {
+    currentTeamId = null;
+  }
+  if (socket?.connected) {
+    socket.emit('leave_team_chat', teamId);
+  }
+};
+
+export const sendChatMessage = (teamId, content) => {
+  if (socket?.connected) {
+    socket.emit('send_message', { teamId, content });
   }
 };

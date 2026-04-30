@@ -15,6 +15,7 @@ model User {
   teams     TeamMember[]
   cards     Card[]   @relation("AssignedTo")
   comments  Comment[]
+  messages  TeamMessage[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -24,6 +25,7 @@ model Team {
   name      String
   members   TeamMember[]
   boards    Board[]
+  messages  TeamMessage[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -92,4 +94,15 @@ model Comment {
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model TeamMessage {
+  id        String   @id @default(uuid())
+  content   String
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  isSaved   Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
